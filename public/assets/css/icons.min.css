@@ -10,12 +10,12 @@
 */
 @font-face {
   font-family: "remixicon";
-  src: url(/fonts/vendor/remixicon/remixicon.eot?29066d810a74e994be27bb4f2771f0c7); /* IE9*/
-  src: url(/fonts/vendor/remixicon/remixicon.eot?29066d810a74e994be27bb4f2771f0c7#iefix) format('embedded-opentype'), /* IE6-IE8 */
-  url(/fonts/vendor/remixicon/remixicon.woff2?bb211d855a1864aa5b67957968fa10e4) format("woff2"),
-  url(/fonts/vendor/remixicon/remixicon.woff?ce82bb240fef24f93f953dfcb2015e75) format("woff"),
-  url(/fonts/vendor/remixicon/remixicon.ttf?868d1a768f4762dbcc3e7ba86b793e3b) format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-  url(/fonts/vendor/remixicon/remixicon.svg?df9902a6df13645438e1bed19bdeba9f#remixicon) format('svg'); /* iOS 4.1- */
+  src: url(../../fonts/vendor/remixicon/remixicon.eot?29066d810a74e994be27bb4f2771f0c7); /* IE9*/
+  src: url(../../fonts/vendor/remixicon/remixicon.eot?29066d810a74e994be27bb4f2771f0c7#iefix) format('embedded-opentype'), /* IE6-IE8 */
+  url(../../fonts/vendor/remixicon/remixicon.woff2?bb211d855a1864aa5b67957968fa10e4) format("woff2"),
+  url(../../fonts/vendor/remixicon/remixicon.woff?ce82bb240fef24f93f953dfcb2015e75) format("woff"),
+  url(../../fonts/vendor/remixicon/remixicon.ttf?868d1a768f4762dbcc3e7ba86b793e3b) format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  url(../../fonts/vendor/remixicon/remixicon.svg?df9902a6df13645438e1bed19bdeba9f#remixicon) format('svg'); /* iOS 4.1- */
   font-display: swap;
 }
 
@@ -3112,8 +3112,8 @@
 @font-face {
   font-display: block;
   font-family: "bootstrap-icons";
-  src: url(/fonts/vendor/bootstrap-icons/bootstrap-icons.woff2?b7bcc075b395c14ce8c2d75dcd5fabe5) format("woff2"),
-url(/fonts/vendor/bootstrap-icons/bootstrap-icons.woff?39795c0b4513de014cf8685fc5c923fe) format("woff");
+  src: url(../../fonts/vendor/bootstrap-icons/bootstrap-icons.woff2?b7bcc075b395c14ce8c2d75dcd5fabe5) format("woff2"),
+url(../../fonts/vendor/bootstrap-icons/bootstrap-icons.woff?39795c0b4513de014cf8685fc5c923fe) format("woff");
 }
 
 .bi::before,
