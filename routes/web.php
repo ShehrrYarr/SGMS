@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchSwitchController;
+use App\Http\Controllers\DemoController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PrintController;
 use App\Http\Controllers\Store\CartController;
@@ -9,6 +11,7 @@ use App\Http\Controllers\Store\StorefrontController;
 use App\Http\Controllers\Store\StoreOrderController;
 use App\Http\Controllers\Store\WishlistController;
 use App\Models\Tenant;
+use App\Support\Demo;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -17,6 +20,7 @@ use Livewire\Volt\Volt;
 | SGMS routes
 |--------------------------------------------------------------------------
 | /admin            Platform super admin        (superadmin guard)
+| /                 Product landing page + one-click demo sign-in (/demo/{role})
 | /app              Shop staff + POS            (web guard, tenant from user)
 | /{shop}           Online store                (public, tenant from slug)
 | /{shop}/account   Customer account            (customer guard, tenant from slug)
@@ -25,7 +29,10 @@ use Livewire\Volt\Volt;
 | storefront pages are plain controllers + Blade (fast, cacheable, SEO-friendly).
 */
 
-Route::get('/', fn () => redirect()->route('app.dashboard'));
+// Product landing page + one-click demo sign-in (demo only when SGMS_DEMO is on).
+Route::get('/', LandingController::class)->name('landing');
+Route::post('demo/{role}', [DemoController::class, 'enter'])
+    ->whereIn('role', Demo::ROLES)->middleware('throttle:30,1')->name('demo.enter');
 
 /* -------------------------------------------------------------------------
  | Super Admin

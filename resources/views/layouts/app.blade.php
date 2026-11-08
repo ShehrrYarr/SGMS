@@ -41,6 +41,7 @@
 
     <main class="app-wrapper">
         <div class="app-container">
+            @include('layouts.partials.demo-bar', ['account' => $user])
             {{ $slot }}
         </div>
         <footer class="sgms-footer">

@@ -18,12 +18,12 @@ class Tenant extends Model
 
     /** URL segments that can never be a shop slug (the store lives at /{slug}). */
     public const RESERVED_SLUGS = [
-        'admin', 'app', 'portal', 'api', 'login', 'logout', 'register', 'www', 'livewire', 'storage',
+        'admin', 'app', 'demo', 'landing', 'portal', 'api', 'login', 'logout', 'register', 'www', 'livewire', 'storage',
         'assets', 'css', 'js', 'build', 'vendor', 'store', 'up', 'images', 'fonts', 'favicon.ico', 'robots.txt', 'sitemap.xml',
     ];
 
     /** Route constraint for {tenant} on the storefront. */
-    public const SLUG_ROUTE_PATTERN = '(?!(?:admin|app|portal|api|login|logout|register|www|livewire|storage|assets|css|js|build|vendor|store|up|images|fonts)$)[a-z0-9][a-z0-9-]*';
+    public const SLUG_ROUTE_PATTERN = '(?!(?:admin|app|demo|landing|portal|api|login|logout|register|www|livewire|storage|assets|css|js|build|vendor|store|up|images|fonts)$)[a-z0-9][a-z0-9-]*';
 
     public const PLANS = ['basic' => 'Basic', 'standard' => 'Standard', 'premium' => 'Premium'];
 

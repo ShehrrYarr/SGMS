@@ -54,6 +54,12 @@ new #[Layout('layouts.app')] #[Title('Online Store Settings')] class extends Com
             'payment_instructions' => ['nullable', 'string', 'max:500'],
         ], [], ['free_delivery_over' => 'free delivery threshold']);
 
+        if (! $this->store_enabled && $this->blockedInDemo(auth('web')->user(), 'Closing the demo store')) {
+            $this->store_enabled = true;
+
+            return;
+        }
+
         $accounts = PaymentAccount::query()->active()->pluck('account_type', 'id');
         $banks = array_values(array_filter(array_map('intval', $this->bank_accounts), fn ($id) => ($accounts[$id] ?? null) === PaymentAccount::TYPE_BANK));
         $wallets = array_values(array_filter(array_map('intval', $this->wallet_accounts), fn ($id) => ($accounts[$id] ?? null) === PaymentAccount::TYPE_WALLET));

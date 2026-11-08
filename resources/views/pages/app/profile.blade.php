@@ -35,6 +35,13 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
         ]);
+
+        if (strcasecmp($data['email'], $user->email) !== 0 && $this->blockedInDemo($user, 'Changing the sign-in email')) {
+            $this->email = $user->email;
+
+            return;
+        }
+
         $user->update($data);
         $this->toast('Profile updated.');
     }
@@ -42,6 +49,13 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public function savePassword(): void
     {
         $user = auth('web')->user();
+
+        if ($this->blockedInDemo($user, 'Changing the password')) {
+            $this->reset('current_password', 'password', 'password_confirmation');
+
+            return;
+        }
+
         $this->validate([
             'current_password' => ['required', fn ($a, $v, $fail) => Hash::check($v, $user->password) ?: $fail('Current password is incorrect.')],
             'password' => ['required', 'confirmed', Password::min(8)],

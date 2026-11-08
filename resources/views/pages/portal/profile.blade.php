@@ -42,6 +42,13 @@ new #[Layout('layouts.portal')] #[Title('Profile')] class extends Component {
     public function savePassword(): void
     {
         $customer = auth('customer')->user();
+
+        if ($this->blockedInDemo($customer, 'Changing the password')) {
+            $this->reset('current_password', 'password', 'password_confirmation');
+
+            return;
+        }
+
         $this->validate([
             'current_password' => ['required', fn ($a, $v, $fail) => Hash::check($v, $customer->password) ?: $fail('Current password is incorrect.')],
             'password' => ['required', 'confirmed', Password::min(8)],

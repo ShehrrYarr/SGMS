@@ -55,6 +55,10 @@ new #[Layout('layouts.app')] #[Title('Staff Users')] class extends Component {
             return;
         }
 
+        if ($this->editId && $this->blockedInDemo(User::query()->find($this->editId), 'Editing the demo sign-in accounts')) {
+            return;
+        }
+
         $attributes = collect($data)->except('password')->all();
 
         if (! empty($data['password'])) {

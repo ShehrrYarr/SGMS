@@ -16,6 +16,7 @@ php artisan serve
 
 | Area | URL | Demo login (password `password`) |
 |---|---|---|
+| Landing page | `/` | one-click demo tags when `SGMS_DEMO=true` |
 | Super admin | `/admin` | `admin@platform.com` |
 | Shop staff | `/app` | `owner@urbangarments.com`, `manager@urbangarments.com` (City Mall), `cashier@urbangarments.com` |
 | POS | `/app/pos` | any staff user |
@@ -168,6 +169,24 @@ Missing history can be rebuilt from stock movements (valued at today's cost):
 ```bash
 php artisan sgms:stock-snapshot --days=90
 ```
+
+## Landing page and public demo
+
+`/` is the product page (`resources/views/landing.blade.php`, styles in
+`public/landing/landing.css`, screenshots in `public/landing/shots`). Plans and
+the WhatsApp number live in `config/sgms.php`.
+
+With `SGMS_DEMO=true` the page shows four hang tags (owner, manager, cashier,
+customer). Each one is a `POST /demo/{role}` that signs the visitor in to the
+Urban Garments demo shop; the super admin is never offered. For those accounts
+the app refuses changes that would lock the next visitor out (password, sign-in
+email, editing demo staff, closing the store), shows a demo notice, and
+`sgms:demo-reset` rebuilds the whole database and uploads every night at
+`SGMS_DEMO_RESET_AT` (03:00). The command refuses to run when `SGMS_DEMO` is
+off. **Never turn the demo on for an install that holds real shop data.**
+
+To refresh the screenshots, sign in through the demo tags and capture the
+pages at 1440 × 900 (1.5× scale, WebP); file names are listed in the view.
 
 ## Production (sub-folder install)
 

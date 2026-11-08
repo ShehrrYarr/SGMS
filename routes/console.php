@@ -10,3 +10,8 @@ use Illuminate\Support\Facades\Schedule;
 
 // Daily stock valuation for the reports (keeps the cost that applied that day).
 Schedule::command('sgms:stock-snapshot')->dailyAt('23:55')->withoutOverlapping();
+
+// Public demo only (SGMS_DEMO=true): rebuild the demo data every night.
+if (config('sgms.demo.enabled')) {
+    Schedule::command('sgms:demo-reset', ['--force'])->dailyAt(config('sgms.demo.reset_at'));
+}

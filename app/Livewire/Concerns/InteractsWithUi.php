@@ -3,6 +3,9 @@
 namespace App\Livewire\Concerns;
 
 use App\Exceptions\BusinessException;
+use App\Models\Customer;
+use App\Models\User;
+use App\Support\Demo;
 use Closure;
 
 /**
@@ -23,6 +26,21 @@ trait InteractsWithUi
     public function closeModal(string $name): void
     {
         $this->dispatch('close-modal', name: $name);
+    }
+
+    /**
+     * Public demo: refuse a change that would lock the next visitor out.
+     * Returns true (and shows why) when the action must stop.
+     */
+    protected function blockedInDemo(User|Customer|null $account, string $what): bool
+    {
+        if (! Demo::protects($account)) {
+            return false;
+        }
+
+        $this->toast($what.' is turned off in the demo, so the next visitor can still sign in.', 'error');
+
+        return true;
     }
 
     /**
