@@ -48,7 +48,7 @@ new #[Layout('layouts.admin')] #[Title('Shop details')] class extends Component 
     {
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:120'],
-            'form.slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('tenants', 'slug')->ignore($this->tenantId), Rule::notIn(['admin', 'app', 'portal', 'api'])],
+            'form.slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('tenants', 'slug')->ignore($this->tenantId), Rule::notIn(Tenant::RESERVED_SLUGS)],
             'form.plan' => ['required', Rule::in(array_keys(Tenant::PLANS))],
             'form.trial_ends_at' => ['nullable', 'date'],
             'form.phone' => ['nullable', 'string', 'max:30'],
@@ -71,6 +71,13 @@ new #[Layout('layouts.admin')] #[Title('Shop details')] class extends Component 
         }
 
         $this->toast($suspend ? 'Shop suspended.' : 'Shop activated.', $suspend ? 'warning' : 'success');
+    }
+
+    public function toggleStore(): void
+    {
+        $tenant = Tenant::query()->findOrFail($this->tenantId);
+        $tenant->update(['store_blocked' => ! $tenant->store_blocked]);
+        $this->toast($tenant->store_blocked ? 'Online store disabled for this shop.' : 'Online store allowed again.', $tenant->store_blocked ? 'warning' : 'success');
     }
 
     public function toggleUser(int $userId): void
@@ -122,6 +129,10 @@ new #[Layout('layouts.admin')] #[Title('Shop details')] class extends Component 
     <x-page-header :title="$tenant->name" :breadcrumbs="['Platform' => route('admin.dashboard'), 'Shops' => route('admin.shops.index'), $tenant->name => null]">
         <x-slot:actions>
             <x-status-badge :status="$tenant->status" class="fs-12 py-2 px-3" />
+            <button type="button" class="btn {{ $tenant->store_blocked ? 'btn-success' : 'btn-light-warning' }}"
+                    x-on:click="SGMS.confirm({ title: @js($tenant->store_blocked ? 'Allow the online store again?' : "Disable this shop's online store?"), text: @js($tenant->store_blocked ? '' : 'Shoppers get a not-found page. Staff, POS and the customer account keep working.'), danger: @js(! $tenant->store_blocked) }).then(ok => ok && $wire.toggleStore())">
+                <i class="ri-store-2-line me-1"></i>{{ $tenant->store_blocked ? 'Allow online store' : 'Disable online store' }}
+            </button>
             <button type="button" class="btn {{ $tenant->isActive() ? 'btn-light-danger' : 'btn-success' }}"
                     x-on:click="SGMS.confirm({ title: @js($tenant->isActive() ? 'Suspend this shop?' : 'Activate this shop?'), text: @js($tenant->isActive() ? 'All staff and customers will be blocked immediately.' : ''), danger: @js($tenant->isActive()) }).then(ok => ok && $wire.toggleStatus())">
                 <i class="{{ $tenant->isActive() ? 'ri-forbid-2-line' : 'ri-checkbox-circle-line' }} me-1"></i>{{ $tenant->isActive() ? 'Suspend shop' : 'Activate shop' }}
@@ -153,7 +164,10 @@ new #[Layout('layouts.admin')] #[Title('Shop details')] class extends Component 
                         <div class="col-md-6"><label class="form-label">Phone</label><input wire:model="form.phone" class="form-control"></div>
                         <div class="col-12"><label class="form-label">Address</label><input wire:model="form.address" class="form-control"></div>
                         <div class="col-12 d-flex justify-content-between align-items-center">
-                            <a href="{{ $tenant->portalUrl() }}" target="_blank" class="small"><i class="ri-external-link-line"></i> Customer portal</a>
+                            <span class="small d-flex gap-3">
+                                <a href="{{ $tenant->storeUrl() }}" target="_blank"><i class="ri-external-link-line"></i> Online store</a>
+                                <span class="text-muted">{{ $tenant->store_blocked ? 'Blocked by platform' : ($tenant->store_enabled ? 'Live' : 'Not opened by owner') }}</span>
+                            </span>
                             <button class="btn btn-primary" type="submit"><i class="ri-save-line me-1"></i>Save</button>
                         </div>
                     </form>

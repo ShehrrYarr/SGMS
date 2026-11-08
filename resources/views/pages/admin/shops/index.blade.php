@@ -72,7 +72,7 @@ new #[Layout('layouts.admin')] #[Title('Shops')] class extends Component {
     {
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:120'],
-            'form.slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('tenants', 'slug'), Rule::notIn(['admin', 'app', 'portal', 'api'])],
+            'form.slug' => ['required', 'alpha_dash', 'max:80', Rule::unique('tenants', 'slug'), Rule::notIn(Tenant::RESERVED_SLUGS)],
             'form.plan' => ['required', Rule::in(array_keys(Tenant::PLANS))],
             'form.trial_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'form.phone' => ['nullable', 'string', 'max:30'],
@@ -189,7 +189,7 @@ new #[Layout('layouts.admin')] #[Title('Shops')] class extends Component {
                         <tr wire:key="shop-{{ $shop->id }}">
                             <td data-label="Shop">
                                 <a href="{{ route('admin.shops.show', $shop) }}" class="fw-semibold" wire:navigate>{{ $shop->name }}</a>
-                                <div class="small text-muted">/portal/{{ $shop->slug }}</div>
+                                <div class="small text-muted">/{{ $shop->slug }}</div>
                             </td>
                             <td data-label="Owner">
                                 <div>{{ $shop->owner?->name ?? '—' }}</div>
@@ -241,7 +241,7 @@ new #[Layout('layouts.admin')] #[Title('Shops')] class extends Component {
             <div class="col-md-6">
                 <label class="form-label">Shop URL <span class="text-danger">*</span></label>
                 <div class="input-group">
-                    <span class="input-group-text small">/portal/</span>
+                    <span class="input-group-text small">{{ url('/') }}/</span>
                     <input wire:model="form.slug" x-on:input="$wire.set('form.slug_touched', true, false)" class="form-control @error('form.slug') is-invalid @enderror">
                     @error('form.slug')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>

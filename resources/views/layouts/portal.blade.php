@@ -1,5 +1,5 @@
 @php
-    /** Customer portal layout (/portal/{shop}). */
+    /** Customer account layout (/{shop}/account). */
     $customer = auth('customer')->user();
     $shop = tenant();
     $initials = collect(explode(' ', $customer->name))->take(2)->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->implode('');
@@ -16,13 +16,14 @@
         'userInitials' => $initials,
         'logoutRoute' => 'portal.logout',
         'profileRoute' => 'portal.profile',
+        'extra' => $shop->storeIsLive() ? '<a href="'.e($shop->storeUrl()).'" class="btn btn-sm btn-light-primary"><i class="ri-shopping-bag-3-line me-1"></i><span class="d-none d-sm-inline">Shop online</span></a>' : null,
     ])
 
     @include('layouts.partials.sidebar', [
         'menu' => \App\Support\Navigation::portal(),
         'homeRoute' => 'portal.dashboard',
         'brandTitle' => $shop->name,
-        'brandSub' => 'Customer Portal',
+        'brandSub' => 'My account',
     ])
 
     <main class="app-wrapper">

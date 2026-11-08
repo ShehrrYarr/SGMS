@@ -75,3 +75,33 @@ if (! function_exists('round_money')) {
         return round((float) $amount, 2);
     }
 }
+
+if (! function_exists('normalize_phone')) {
+    /** Pakistani mobile numbers in one shape: "+92 300-1234567" -> "03001234567". */
+    function normalize_phone(?string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone);
+
+        if (str_starts_with($digits, '0092')) {
+            $digits = substr($digits, 2);
+        }
+
+        if (str_starts_with($digits, '92') && strlen($digits) === 12) {
+            $digits = '0'.substr($digits, 2);
+        }
+
+        if (strlen($digits) === 10 && str_starts_with($digits, '3')) {
+            $digits = '0'.$digits;
+        }
+
+        return $digits;
+    }
+}
+
+if (! function_exists('storefront')) {
+    /** View state of the online store for the current request. */
+    function storefront(): App\Support\Store\Storefront
+    {
+        return app(App\Support\Store\Storefront::class);
+    }
+}

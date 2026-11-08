@@ -47,8 +47,8 @@ class SaleReturnService
             $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
             $items = SaleItem::query()->where('sale_id', $sale->id)->whereIn('id', array_keys($quantities))->lockForUpdate()->get()->keyBy('id');
 
-            // Spread invoice-level discount and tax proportionally over the lines.
-            $ratio = (float) $sale->subtotal > 0 ? (float) $sale->total_amount / (float) $sale->subtotal : 0;
+            // Spread invoice-level discount and tax proportionally over the lines (delivery charges excluded).
+            $ratio = (float) $sale->subtotal > 0 ? ((float) $sale->total_amount - (float) $sale->shipping_fee) / (float) $sale->subtotal : 0;
             $lines = [];
             $total = 0.0;
 

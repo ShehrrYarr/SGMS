@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * Shop customer. Authenticates on the `customer` guard inside /portal/{shop}.
+ * Shop customer. Authenticates on the `customer` guard inside /{shop}/account.
  * Tenant scoping guarantees a customer session only works in its own shop.
  */
 class Customer extends Authenticatable

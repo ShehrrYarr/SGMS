@@ -8,15 +8,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Sale extends Model
 {
     use BelongsToTenant, HasBranchScope, HasFactory;
 
     protected $fillable = [
-        'tenant_id', 'branch_id', 'customer_id', 'invoice_number', 'subtotal', 'discount', 'tax',
+        'tenant_id', 'branch_id', 'customer_id', 'invoice_number', 'subtotal', 'discount', 'tax', 'shipping_fee',
         'total_amount', 'paid_amount', 'due_amount', 'returned_amount', 'payment_status',
-        'payment_method', 'sale_date', 'notes', 'created_by',
+        'payment_method', 'channel', 'sale_date', 'notes', 'created_by',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class Sale extends Model
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'tax' => 'decimal:2',
+            'shipping_fee' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'due_amount' => 'decimal:2',
@@ -51,6 +53,11 @@ class Sale extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(SaleReturn::class);
+    }
+
+    public function order(): HasOne
+    {
+        return $this->hasOne(Order::class);
     }
 
     public function ledgerEntries(): HasMany

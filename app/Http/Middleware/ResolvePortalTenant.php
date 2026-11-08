@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Customer portal (/portal/{tenant}): resolves the shop from the URL slug.
+ * Online store and customer account (/{tenant}, /{tenant}/account): resolves the shop from the URL slug.
  * Runs before authentication so the customer guard only finds customers
  * belonging to this shop.
  */

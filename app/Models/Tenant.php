@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Store\StoreSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,11 +16,20 @@ class Tenant extends Model
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    /** URL segments that can never be a shop slug (the store lives at /{slug}). */
+    public const RESERVED_SLUGS = [
+        'admin', 'app', 'portal', 'api', 'login', 'logout', 'register', 'www', 'livewire', 'storage',
+        'assets', 'css', 'js', 'build', 'vendor', 'store', 'up', 'images', 'fonts', 'favicon.ico', 'robots.txt', 'sitemap.xml',
+    ];
+
+    /** Route constraint for {tenant} on the storefront. */
+    public const SLUG_ROUTE_PATTERN = '(?!(?:admin|app|portal|api|login|logout|register|www|livewire|storage|assets|css|js|build|vendor|store|up|images|fonts)$)[a-z0-9][a-z0-9-]*';
+
     public const PLANS = ['basic' => 'Basic', 'standard' => 'Standard', 'premium' => 'Premium'];
 
     protected $fillable = [
         'name', 'slug', 'domain', 'status', 'owner_email', 'phone', 'address',
-        'plan', 'trial_ends_at', 'currency_symbol', 'tax_rate', 'settings',
+        'plan', 'trial_ends_at', 'currency_symbol', 'tax_rate', 'settings', 'store_enabled', 'store_blocked',
     ];
 
     protected function casts(): array
@@ -28,6 +38,8 @@ class Tenant extends Model
             'trial_ends_at' => 'datetime',
             'settings' => 'array',
             'tax_rate' => 'decimal:2',
+            'store_enabled' => 'boolean',
+            'store_blocked' => 'boolean',
         ];
     }
 
@@ -98,5 +110,23 @@ class Tenant extends Model
     public function portalUrl(): string
     {
         return route('portal.login', $this->slug);
+    }
+
+    /* Online store ------------------------------------------------------- */
+
+    public function store(): StoreSettings
+    {
+        return StoreSettings::for($this);
+    }
+
+    public function storeUrl(): string
+    {
+        return route('store.home', $this->slug);
+    }
+
+    /** Open to shoppers: shop active, switched on by the owner, not blocked by the platform. */
+    public function storeIsLive(): bool
+    {
+        return $this->isActive() && $this->store_enabled && ! $this->store_blocked;
     }
 }

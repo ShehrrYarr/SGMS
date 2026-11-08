@@ -51,6 +51,8 @@ class Catalog
         foreach (self::KEYS as $key) {
             Cache::forget("tenant:{$tenantId}:catalog:{$key}");
         }
+
+        Cache::forget("tenant:{$tenantId}:store:facets");
     }
 
     protected static function remember(string $key, \Closure $callback): array

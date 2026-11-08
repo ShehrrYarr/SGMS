@@ -148,7 +148,8 @@ class PageSmokeTest extends TestCase
         $this->get(route('admin.dashboard'))->assertRedirect(route('admin.login'));
         $this->get(route('portal.dashboard', 'urban-garments'))->assertRedirect(route('portal.login', 'urban-garments'));
         $this->get(route('portal.login', 'denim-corner'))->assertForbidden(); // suspended shop
-        $this->get('/portal/does-not-exist/login')->assertNotFound();
+        $this->get('/does-not-exist/account/login')->assertNotFound();
+        $this->get('/portal/urban-garments/login')->assertRedirect('/urban-garments/account/login');
         $this->assertTrue(CustomerLedger::query()->exists());
     }
 }

@@ -20,7 +20,7 @@ new #[Layout('layouts.app')] #[Title('Profit & Loss')] class extends Component {
             fputcsv($out, ['Line', 'Amount']);
             foreach ([
                 'Gross sales' => $pnl['gross_sales'], 'Discounts' => -$pnl['discounts'], 'Net sales (excl. tax)' => $pnl['net_sales'],
-                'Returns' => -$pnl['returns'], 'Net revenue' => $pnl['net_revenue'], 'Cost of goods sold' => -$pnl['cogs'],
+                'Returns' => -$pnl['returns'], 'Delivery charges' => $pnl['delivery'], 'Net revenue' => $pnl['net_revenue'], 'Cost of goods sold' => -$pnl['cogs'],
                 'Gross profit' => $pnl['gross_profit'],
             ] as $label => $value) {
                 fputcsv($out, [$label, number_format($value, 2, '.', '')]);
@@ -67,6 +67,7 @@ new #[Layout('layouts.app')] #[Title('Profit & Loss')] class extends Component {
         ['Discounts given', 'discounts', -1, false, false],
         ['Net sales (excl. tax)', 'net_sales', 1, true, true],
         ['Returns', 'returns', -1, false, false],
+        ['Delivery charges collected', 'delivery', 1, false, true],
         ['Net revenue', 'net_revenue', 1, true, true],
         ['Cost of goods sold', 'cogs', -1, false, false],
         ['Gross profit', 'gross_profit', 1, true, true],

@@ -72,6 +72,7 @@ new #[Layout('layouts.app')] #[Title('Shop Settings')] class extends Component {
 
 <div>
     <x-page-header title="Shop settings" subtitle="Applies to every branch of {{ tenant()->name }}." />
+    @include('partials.settings-tabs', ['current' => 'app.settings'])
 
     <form wire:submit="save" class="row g-3">
         <div class="col-xl-6">
@@ -80,7 +81,7 @@ new #[Layout('layouts.app')] #[Title('Shop Settings')] class extends Component {
                 <div class="card-body row g-3">
                     <div class="col-12"><label class="form-label">Shop name</label><input wire:model="name" class="form-control @error('name') is-invalid @enderror"></div>
                     <div class="col-md-6"><label class="form-label">Phone</label><input wire:model="phone" class="form-control"></div>
-                    <div class="col-md-6"><label class="form-label">Customer portal</label><input class="form-control" value="{{ tenant()->portalUrl() }}" readonly onclick="this.select()"></div>
+                    <div class="col-md-6"><label class="form-label">Online store address</label><input class="form-control" value="{{ tenant()->storeUrl() }}" readonly onclick="this.select()"></div>
                     <div class="col-12"><label class="form-label">Address</label><input wire:model="address" class="form-control"></div>
                 </div>
             </div>

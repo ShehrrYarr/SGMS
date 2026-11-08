@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Store\Cart;
+use App\Services\Store\WishlistService;
+use App\Support\Store\Storefront;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
@@ -17,6 +20,11 @@ class ResetTenantContext
     public function handle(Request $request, Closure $next): Response
     {
         app(TenantContext::class)->forget();
+
+        // Shopper state of the online store is per request too.
+        foreach ([Storefront::class, Cart::class, WishlistService::class] as $service) {
+            app()->forgetInstance($service);
+        }
 
         return $next($request);
     }

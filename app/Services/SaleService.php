@@ -30,7 +30,7 @@ class SaleService
      * @param  array{
      *   branch_id:int, customer_id?:int|null, sale_date?:string|null, notes?:string|null,
      *   items: array<int, array{variant_id:int, quantity:int, unit_price:float, discount?:float}>,
-     *   discount?:float, tax_rate?:float,
+     *   discount?:float, tax_rate?:float, shipping_fee?:float, channel?:string,
      *   payments?: array<int, array{payment_account_id:int, amount:float, reference_no?:string|null}>,
      *   exchange_return_id?:int|null
      * }  $data
@@ -52,7 +52,7 @@ class SaleService
             }
 
             $variants = ProductVariant::query()->with('product')->whereIn('id', $lines->pluck('variant_id'))->get()->keyBy('id');
-            $totals = $this->calculate($lines, $variants, (float) ($data['discount'] ?? 0), (float) ($data['tax_rate'] ?? 0));
+            $totals = $this->calculate($lines, $variants, (float) ($data['discount'] ?? 0), (float) ($data['tax_rate'] ?? 0), (float) ($data['shipping_fee'] ?? 0));
 
             // Exchange credit from a pending return (POS exchange flow).
             $exchange = null;
@@ -91,11 +91,13 @@ class SaleService
                 'subtotal' => $totals['subtotal'],
                 'discount' => $totals['discount'],
                 'tax' => $totals['tax'],
+                'shipping_fee' => $totals['shipping'],
                 'total_amount' => $total,
                 'paid_amount' => $paid,
                 'due_amount' => max(0, $due),
                 'payment_status' => Sale::statusFor($total, $paid),
                 'payment_method' => $this->deriveMethod($payments, $accounts, $exchangeApplied > 0),
+                'channel' => $data['channel'] ?? 'pos',
                 'sale_date' => $data['sale_date'] ?? now(),
                 'notes' => $data['notes'] ?? null,
                 'created_by' => auth('web')->id(),
@@ -195,11 +197,107 @@ class SaleService
     }
 
     /**
+     * Record a payment against one specific invoice (e.g. cash collected on
+     * delivery of an online order), rather than FIFO across the account.
+     */
+    public function settleInvoice(Sale $sale, int $accountId, float $amount, ?string $reference = null, ?string $note = null): SalePayment
+    {
+        return DB::transaction(function () use ($sale, $accountId, $amount, $reference, $note) {
+            $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+            $amount = round_money(min($amount, (float) $sale->due_amount));
+
+            if ($amount <= 0) {
+                throw new BusinessException("Invoice {$sale->invoice_number} has nothing left to pay.");
+            }
+
+            $account = PaymentAccount::query()->findOrFail($accountId);
+            $date = today()->toDateString();
+
+            $this->accounts->credit($account->id, $amount, 'sale', $sale->id, $note ?: 'Payment for '.$sale->invoice_number, $sale->branch_id);
+
+            $entry = $sale->customer_id
+                ? $this->ledger->postCustomer($sale->customer_id, 'payment', 0, $amount, [
+                    'sale_id' => $sale->id,
+                    'payment_account_id' => $account->id,
+                    'reference_no' => $reference ?: $sale->invoice_number,
+                    'note' => $note ?: 'Payment via '.$account->account_name,
+                    'transaction_date' => $date,
+                ])
+                : null;
+
+            $payment = SalePayment::create([
+                'tenant_id' => $sale->tenant_id,
+                'sale_id' => $sale->id,
+                'payment_account_id' => $account->id,
+                'customer_ledger_id' => $entry?->id,
+                'amount' => $amount,
+                'payment_method' => $account->paymentMethod(),
+                'reference_no' => $reference,
+                'payment_date' => $date,
+                'created_by' => auth('web')->id(),
+            ]);
+
+            $paid = round_money((float) $sale->paid_amount + $amount);
+            $sale->forceFill([
+                'paid_amount' => $paid,
+                'due_amount' => max(0, round_money((float) $sale->due_amount - $amount)),
+                'payment_status' => Sale::statusFor((float) $sale->total_amount - (float) $sale->returned_amount, $paid),
+            ])->save();
+
+            return $payment;
+        }, 3);
+    }
+
+    /**
+     * Drop the delivery charge from an invoice (order cancelled or returned by
+     * the courier). Unpaid charges are cleared from the customer's account;
+     * paid charges are refunded from $refundAccountId.
+     */
+    public function waiveShipping(Sale $sale, ?int $refundAccountId = null, string $note = 'Delivery charge waived'): void
+    {
+        DB::transaction(function () use ($sale, $refundAccountId, $note) {
+            $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+            $fee = round_money((float) $sale->shipping_fee);
+
+            if ($fee <= 0) {
+                return;
+            }
+
+            $fromDue = min($fee, (float) $sale->due_amount);
+            $refund = round_money($fee - $fromDue);
+            $attributes = ['sale_id' => $sale->id, 'reference_no' => $sale->invoice_number];
+
+            if ($sale->customer_id) {
+                $this->ledger->postCustomer($sale->customer_id, 'adjustment', 0, $fee, $attributes + ['note' => $note]);
+            }
+
+            if ($refund > 0) {
+                $account = PaymentAccount::query()->find($refundAccountId) ?? throw new BusinessException('Choose the account to refund the delivery charge from.');
+                $this->accounts->debit($account->id, $refund, 'sale_return', $sale->id, $note.' ('.$sale->invoice_number.')', $sale->branch_id);
+
+                if ($sale->customer_id) {
+                    $this->ledger->postCustomer($sale->customer_id, 'refund', $refund, 0, $attributes + ['payment_account_id' => $account->id, 'note' => 'Delivery charge refunded via '.$account->account_name]);
+                }
+            }
+
+            $total = round_money((float) $sale->total_amount - $fee);
+            $paid = round_money((float) $sale->paid_amount - $refund);
+            $sale->forceFill([
+                'shipping_fee' => 0,
+                'total_amount' => $total,
+                'paid_amount' => max(0, $paid),
+                'due_amount' => max(0, round_money((float) $sale->due_amount - $fromDue)),
+                'payment_status' => Sale::statusFor($total - (float) $sale->returned_amount, max(0, $paid)),
+            ])->save();
+        }, 3);
+    }
+
+    /**
      * Recompute every amount server side.
      *
-     * @return array{lines: array, subtotal: float, discount: float, tax: float, total: float}
+     * @return array{lines: array, subtotal: float, discount: float, tax: float, shipping: float, total: float}
      */
-    public function calculate(Collection $lines, Collection $variants, float $discount, float $taxRate): array
+    public function calculate(Collection $lines, Collection $variants, float $discount, float $taxRate, float $shipping = 0): array
     {
         $rows = [];
         $subtotal = 0.0;
@@ -233,13 +331,15 @@ class SaleService
         $discount = min($subtotal, max(0, round_money($discount)));
         $taxRate = max(0, min(100, $taxRate));
         $tax = round_money(($subtotal - $discount) * $taxRate / 100);
+        $shipping = max(0, round_money($shipping));
 
         return [
             'lines' => $rows,
             'subtotal' => $subtotal,
             'discount' => $discount,
             'tax' => $tax,
-            'total' => round_money($subtotal - $discount + $tax),
+            'shipping' => $shipping,
+            'total' => round_money($subtotal - $discount + $tax + $shipping),
         ];
     }
 

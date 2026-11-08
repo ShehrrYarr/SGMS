@@ -17,6 +17,7 @@ class DocumentNumber
         'return' => 'RET',
         'transfer' => 'TRF',
         'product' => 'PRD',
+        'order' => 'ORD',
     ];
 
     public static function next(string $key, int $pad = 6): string

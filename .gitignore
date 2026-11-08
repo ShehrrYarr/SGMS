@@ -21,3 +21,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Third-party skill without a license: keep locally, do not redistribute
+/.claude/skills/storefront-best-practices/

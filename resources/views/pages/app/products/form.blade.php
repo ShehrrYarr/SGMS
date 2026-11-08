@@ -4,8 +4,10 @@ use App\Exceptions\BusinessException;
 use App\Livewire\Concerns\InteractsWithUi;
 use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductColorImage;
 use App\Models\ProductVariant;
 use App\Services\ProductService;
+use App\Services\Store\StoreCatalog;
 use App\Support\Catalog;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -41,6 +43,20 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
 
     public ?string $currentImage = null;
 
+    // Online store
+    public $compare_at_price = '';
+
+    public bool $show_online = true;
+
+    public bool $is_featured = false;
+
+    public $sizeChart;
+
+    public ?string $currentSizeChart = null;
+
+    /** Pending colour photo uploads: color_id => file (saved immediately). */
+    public array $colorPhotos = [];
+
     // Variant generator
     public array $genColors = [];
 
@@ -58,6 +74,10 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
             $this->base_cost = (float) $product->base_cost;
             $this->base_price = (float) $product->base_price;
             $this->currentImage = $product->image_url;
+            $this->compare_at_price = $product->compare_at_price !== null ? (float) $product->compare_at_price : '';
+            $this->show_online = (bool) $product->show_online;
+            $this->is_featured = (bool) $product->is_featured;
+            $this->currentSizeChart = $product->size_chart_url;
             $this->loadVariants();
         }
     }
@@ -86,6 +106,10 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
             'base_price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
             'image' => ['nullable', 'image', 'max:2048'],
+            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+            'show_online' => ['boolean'],
+            'is_featured' => ['boolean'],
+            'sizeChart' => ['nullable', 'image', 'max:3072'],
             'variants.*.barcode' => ['required', 'string', 'max:64'],
             'variants.*.cost_price' => ['required', 'numeric', 'min:0'],
             'variants.*.retail_price' => ['required', 'numeric', 'min:0'],
@@ -94,11 +118,17 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
         ]);
 
         $path = $this->image ? $this->image->store('products/'.tenant_id(), 'public') : null;
+        $chart = $this->sizeChart ? $this->sizeChart->store('size-charts/'.tenant_id(), 'public') : null;
+        $store = [
+            'compare_at_price' => (float) $this->compare_at_price > 0 ? round_money($this->compare_at_price) : null,
+            'show_online' => $this->show_online,
+            'is_featured' => $this->is_featured,
+        ];
 
         try {
             if ($this->productId) {
                 $product = Product::query()->findOrFail($this->productId);
-                $attributes = collect($data)->only('name', 'category_id', 'brand_id', 'description', 'status')->all() + [
+                $attributes = collect($data)->only('name', 'category_id', 'brand_id', 'description', 'status')->all() + $store + [
                     'sku' => $data['sku'] ?: $product->sku,
                     'base_cost' => (float) ($data['base_cost'] ?: 0),
                     'base_price' => (float) ($data['base_price'] ?: 0),
@@ -109,6 +139,13 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
                         Storage::disk('public')->delete($product->image);
                     }
                     $attributes['image'] = $path;
+                }
+
+                if ($chart) {
+                    if ($product->size_chart) {
+                        Storage::disk('public')->delete($product->size_chart);
+                    }
+                    $attributes['size_chart'] = $chart;
                 }
 
                 $product->update($attributes);
@@ -129,7 +166,7 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
                     ]);
                 }
             } else {
-                $product = $service->create($data + ['image' => $path]);
+                $product = $service->create($store + $data + ['image' => $path, 'size_chart' => $chart]);
                 $this->productId = $product->id;
             }
 
@@ -147,8 +184,52 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
             return;
         }
 
+        StoreCatalog::forgetFacets();
         session()->flash('success', 'Product saved'.($created ? " with {$created} new variant(s)" : '').'.');
         $this->redirectRoute('app.products.edit', $product, navigate: true);
+    }
+
+    public function removeSizeChart(): void
+    {
+        $product = Product::query()->findOrFail($this->productId);
+        Storage::disk('public')->delete((string) $product->size_chart);
+        $product->update(['size_chart' => null]);
+        $this->currentSizeChart = null;
+        $this->toast('Size chart removed.');
+    }
+
+    /** A colour photo was picked: save it straight away. */
+    public function updatedColorPhotos($file, $colorId): void
+    {
+        $this->validate(["colorPhotos.{$colorId}" => ['image', 'max:3072']], [], ["colorPhotos.{$colorId}" => 'photo']);
+
+        $colorId = (int) $colorId;
+        abort_unless($this->productId && ProductVariant::query()->where('product_id', $this->productId)->where('color_id', $colorId)->exists(), 404);
+
+        $existing = ProductColorImage::query()->where('product_id', $this->productId)->where('color_id', $colorId)->first();
+
+        if ($existing) {
+            Storage::disk('public')->delete($existing->image);
+        }
+
+        ProductColorImage::query()->updateOrCreate(
+            ['product_id' => $this->productId, 'color_id' => $colorId],
+            ['image' => $file->store('products/'.tenant_id().'/colors', 'public')],
+        );
+
+        unset($this->colorPhotos[$colorId]);
+        $this->toast('Colour photo saved.');
+    }
+
+    public function removeColorPhoto(int $colorId): void
+    {
+        $photo = ProductColorImage::query()->where('product_id', $this->productId)->where('color_id', $colorId)->first();
+
+        if ($photo) {
+            Storage::disk('public')->delete($photo->image);
+            $photo->delete();
+            $this->toast('Colour photo removed.');
+        }
     }
 
     public function deleteVariant(int $id): void
@@ -181,6 +262,9 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
             'sizes' => Catalog::sizes(),
             'variantRows' => $variantRows,
             'existingCombos' => $variantRows->map(fn ($v) => ($v->color_id ?? 0).'-'.($v->size_id ?? 0))->all(),
+            'variantColors' => $variantRows->pluck('color')->filter()->unique('id')->sortBy('name')->values(),
+            'colorImages' => $this->productId ? ProductColorImage::query()->where('product_id', $this->productId)->get()->keyBy('color_id') : collect(),
+            'storeUrl' => $this->productId ? route('store.product', ['tenant' => tenant()->slug, 'slug' => Product::query()->whereKey($this->productId)->value('slug')]) : null,
         ];
     }
 }; ?>
@@ -254,6 +338,48 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
                     </div>
                 </div>
             @endif
+
+            @if ($variantColors->isNotEmpty())
+                <div class="card">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="card-title mb-0"><i class="ri-palette-line me-1"></i>Colour photos</h6>
+                        <small class="text-muted">One photo per colour. Shoppers see it when they pick that colour.</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            @foreach ($variantColors as $color)
+                                @php $photo = $colorImages->get($color->id); @endphp
+                                <div class="col-6 col-md-4 col-xxl-3" wire:key="cphoto-{{ $color->id }}">
+                                    <div class="border rounded-3 p-2 h-100 d-flex flex-column gap-2">
+                                        <div class="ratio rounded-2 overflow-hidden bg-light position-relative" style="--bs-aspect-ratio: 125%">
+                                            @if ($photo)
+                                                <img src="{{ $photo->url }}" alt="{{ $name }} in {{ $color->name }}" style="object-fit: cover">
+                                            @else
+                                                <div class="d-flex flex-column align-items-center justify-content-center text-muted">
+                                                    <span class="rounded-circle mb-2" style="width: 36px; height: 36px; background: {{ $color->hex_code }}; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12)"></span>
+                                                    <small>No photo</small>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <div class="d-flex align-items-center gap-1 small fw-medium"><span class="color-dot" style="background: {{ $color->hex_code }}"></span>{{ $color->name }}</div>
+                                        <div wire:loading wire:target="colorPhotos.{{ $color->id }}" class="small text-muted">Uploading…</div>
+                                        <div class="d-flex gap-1 mt-auto">
+                                            <label class="btn btn-sm btn-light flex-grow-1 mb-0">
+                                                <i class="ri-upload-2-line me-1"></i>{{ $photo ? 'Replace' : 'Upload' }}
+                                                <input type="file" class="d-none" accept="image/*" wire:model="colorPhotos.{{ $color->id }}">
+                                            </label>
+                                            @if ($photo)
+                                                <button type="button" class="btn btn-sm btn-light-danger" wire:click="removeColorPhoto({{ $color->id }})" title="Remove photo"><i class="ri-delete-bin-line"></i></button>
+                                            @endif
+                                        </div>
+                                        @error('colorPhotos.'.$color->id)<div class="text-danger small">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
 
         <div class="col-xl-4">
@@ -270,6 +396,47 @@ new #[Layout('layouts.app')] #[Title('Product')] class extends Component {
                     <input type="file" wire:model="image" accept="image/*" class="form-control form-control-sm @error('image') is-invalid @enderror">
                     <div wire:loading wire:target="image" class="small text-muted mt-1">Uploading…</div>
                     @error('image')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0"><i class="ri-shopping-bag-3-line me-1"></i>Online store</h6>
+                    @if ($storeUrl && $show_online && $status === 'active')<a href="{{ $storeUrl }}" target="_blank" rel="noopener" class="small">View in store <i class="ri-external-link-line"></i></a>@endif
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-2">
+                        <input wire:model.live="show_online" class="form-check-input" type="checkbox" id="show_online">
+                        <label class="form-check-label" for="show_online">Show on the online store</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input wire:model="is_featured" class="form-check-input" type="checkbox" id="is_featured">
+                        <label class="form-check-label" for="is_featured">Feature at the top of listings</label>
+                    </div>
+                    <label class="form-label" for="compare_at_price">Compare-at ("was") price</label>
+                    <div class="input-group">
+                        <span class="input-group-text">{{ tenant()->currency_symbol }}</span>
+                        <input wire:model="compare_at_price" id="compare_at_price" type="number" step="1" min="0" class="form-control @error('compare_at_price') is-invalid @enderror" placeholder="Not on sale">
+                    </div>
+                    <div class="form-text">Set it higher than the retail price to show a crossed-out price and a "-20%" badge.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h6 class="card-title mb-0"><i class="ri-ruler-line me-1"></i>Size chart</h6></div>
+                <div class="card-body text-center">
+                    @if ($sizeChart)
+                        <img src="{{ $sizeChart->temporaryUrl() }}" class="img-fluid rounded-3 mb-2" style="max-height: 180px" alt="">
+                    @elseif ($currentSizeChart)
+                        <a href="{{ $currentSizeChart }}" target="_blank" rel="noopener"><img src="{{ $currentSizeChart }}" class="img-fluid rounded-3 mb-2" style="max-height: 180px" alt="Size chart"></a>
+                        <div><button type="button" class="btn btn-sm btn-link text-danger" wire:click="removeSizeChart" wire:confirm="Remove the size chart?">Remove</button></div>
+                    @else
+                        <p class="text-muted small">Shoppers see a "Size chart" link next to the sizes.</p>
+                    @endif
+                    <input type="file" wire:model="sizeChart" accept="image/*" class="form-control form-control-sm @error('sizeChart') is-invalid @enderror">
+                    <div wire:loading wire:target="sizeChart" class="small text-muted mt-1">Uploading…</div>
+                    @error('sizeChart')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="form-text">Saved when you save the product.</div>
                 </div>
             </div>
 

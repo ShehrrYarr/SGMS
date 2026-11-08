@@ -11,6 +11,11 @@
         'branches' => $branches,
         'currentBranch' => $currentBranch,
     ])->render();
+
+    // New online order alerts for owners and managers.
+    if ($user->canManage()) {
+        $extra = \Livewire\Livewire::mount('store.order-bell').$extra;
+    }
 @endphp
 <!DOCTYPE html>
 <html @include('layouts.partials.html-attributes')>

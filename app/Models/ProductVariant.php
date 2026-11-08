@@ -81,6 +81,27 @@ class ProductVariant extends Model
         ]);
     }
 
+    /**
+     * Adds an `available` column for the online store: stock across all
+     * branches minus units reserved by online orders not yet confirmed.
+     */
+    public function scopeWithOnlineStock(Builder $query): Builder
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('product_variants.*');
+        }
+
+        return $query->selectRaw('('.self::onlineStockSql().') as available');
+    }
+
+    /** SQL for online availability of the outer `product_variants` row. */
+    public static function onlineStockSql(string $variantColumn = 'product_variants.id'): string
+    {
+        return "(SELECT COALESCE(SUM(GREATEST(inv.quantity, 0)), 0) FROM inventories inv WHERE inv.product_variant_id = {$variantColumn})
+            - (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi JOIN orders o ON o.id = oi.order_id
+               WHERE oi.product_variant_id = {$variantColumn} AND o.status = 'pending')";
+    }
+
     public function scopeSearch(Builder $query, ?string $term): Builder
     {
         $term = trim((string) $term);

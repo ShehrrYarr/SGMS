@@ -25,6 +25,11 @@ class Navigation
                 ['label' => 'Returns & Exchanges', 'icon' => 'ri-arrow-go-back-line', 'route' => 'app.returns.index', 'active' => 'app.returns.*'],
                 ['label' => 'Customers', 'icon' => 'ri-group-line', 'route' => 'app.customers.index', 'active' => 'app.customers.*'],
             ]],
+            $manage ? ['title' => 'Online Store', 'items' => [
+                ['label' => 'Online Orders', 'icon' => 'ri-shopping-bag-3-line', 'route' => 'app.orders.index', 'active' => 'app.orders.*', 'badge' => static::count(fn () => \App\Models\Order::query()->where('status', 'pending')->count())],
+                ['label' => 'Coupons', 'icon' => 'ri-coupon-3-line', 'route' => 'app.coupons', 'active' => 'app.coupons'],
+                ['label' => 'Reviews', 'icon' => 'ri-star-smile-line', 'route' => 'app.reviews', 'active' => 'app.reviews', 'badge' => static::count(fn () => \App\Models\ProductReview::query()->where('status', 'pending')->count())],
+            ]] : null,
             $manage ? ['title' => 'Purchasing', 'items' => [
                 ['label' => 'Lot Purchases', 'icon' => 'ri-inbox-archive-line', 'route' => 'app.purchases.index', 'active' => 'app.purchases.*'],
                 ['label' => 'Vendors', 'icon' => 'ri-truck-line', 'route' => 'app.vendors.index', 'active' => 'app.vendors.*'],
@@ -48,9 +53,17 @@ class Navigation
             $owner ? ['title' => 'Shop Settings', 'items' => [
                 ['label' => 'Branches', 'icon' => 'ri-store-2-line', 'route' => 'app.branches', 'active' => 'app.branches'],
                 ['label' => 'Staff Users', 'icon' => 'ri-user-settings-line', 'route' => 'app.users', 'active' => 'app.users'],
-                ['label' => 'Settings', 'icon' => 'ri-settings-3-line', 'route' => 'app.settings', 'active' => 'app.settings'],
+                ['label' => 'Settings', 'icon' => 'ri-settings-3-line', 'route' => 'app.settings', 'active' => 'app.settings*'],
             ]] : null,
         ]));
+    }
+
+    /** Badge value, or null (hidden) when zero. */
+    protected static function count(\Closure $query): ?int
+    {
+        $count = (int) $query();
+
+        return $count > 0 ? $count : null;
     }
 
     public static function admin(): array
@@ -71,6 +84,7 @@ class Navigation
         return [
             ['title' => 'My Account', 'items' => [
                 ['label' => 'Overview', 'icon' => 'ri-home-smile-line', 'route' => 'portal.dashboard', 'active' => 'portal.dashboard'],
+                ['label' => 'Online Orders', 'icon' => 'ri-truck-line', 'route' => 'portal.orders', 'active' => 'portal.orders'],
                 ['label' => 'My Purchases', 'icon' => 'ri-shopping-bag-3-line', 'route' => 'portal.purchases.index', 'active' => 'portal.purchases.*'],
                 ['label' => 'Statement', 'icon' => 'ri-file-list-2-line', 'route' => 'portal.statement', 'active' => 'portal.statement'],
                 ['label' => 'Profile & Password', 'icon' => 'ri-lock-password-line', 'route' => 'portal.profile', 'active' => 'portal.profile'],

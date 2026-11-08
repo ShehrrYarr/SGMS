@@ -16,6 +16,16 @@ new #[Layout('layouts.auth')] #[Title('Customer Sign In')] class extends Compone
 
     public bool $remember = true;
 
+    public function mount(): void
+    {
+        // Coming from the online store: return there after signing in.
+        $previous = url()->previous();
+
+        if (str_starts_with($previous, tenant()->storeUrl()) && ! str_contains($previous, '/account')) {
+            session(['url.intended' => $previous]);
+        }
+    }
+
     public function signIn(): void
     {
         $this->validate(['login' => ['required', 'string', 'max:120'], 'password' => ['required', 'string']]);
@@ -30,7 +40,7 @@ new #[Layout('layouts.auth')] #[Title('Customer Sign In')] class extends Compone
 
         // Customer queries are tenant scoped: only this shop's customers match.
         $field = str_contains($this->login, '@') ? 'email' : 'phone';
-        $value = $field === 'phone' ? preg_replace('/[^0-9+]/', '', $this->login) : Str::lower(trim($this->login));
+        $value = $field === 'phone' ? normalize_phone($this->login) : Str::lower(trim($this->login));
         $customer = Customer::query()->where($field, $value)->first();
 
         if (! $customer || ! $customer->password || ! Hash::check($this->password, $customer->password)) {
@@ -52,6 +62,7 @@ new #[Layout('layouts.auth')] #[Title('Customer Sign In')] class extends Compone
         Auth::guard('customer')->login($customer, $this->remember);
         session()->regenerate();
         $customer->forceFill(['last_login_at' => now()])->save();
+        app(\App\Services\Store\WishlistService::class)->mergeGuestList($customer);
 
         $this->redirectIntended(route('portal.dashboard'));
     }
@@ -59,7 +70,7 @@ new #[Layout('layouts.auth')] #[Title('Customer Sign In')] class extends Compone
 
 <x-auth-card heading="{{ tenant()->name }}" :badge="tenant()->name" tagline="Your purchases and account statement, any time."
              :features="[['ri-shopping-bag-3-line', 'Every invoice with item-level detail'], ['ri-file-list-2-line', 'Transparent running statement'], ['ri-download-2-line', 'Download receipts and statements']]">
-    <p class="text-muted mb-4">Customer portal — sign in with your phone number or email.</p>
+    <p class="text-muted mb-4">Sign in with your phone number or email to see your orders and statement.</p>
 
     @if (session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
@@ -84,6 +95,11 @@ new #[Layout('layouts.auth')] #[Title('Customer Sign In')] class extends Compone
             <span wire:loading wire:target="signIn"><span class="spinner-border spinner-border-sm me-2"></span>Signing in…</span>
         </button>
     </form>
+
+    <div class="d-flex flex-wrap justify-content-between gap-2 mt-4 small">
+        <a href="{{ route('portal.register') }}" wire:navigate>New here? Create an account</a>
+        @if (tenant()->storeIsLive())<a href="{{ tenant()->storeUrl() }}">Back to the store</a>@endif
+    </div>
 
     @if (app()->isLocal() && tenant()->slug === 'urban-garments')
         <div class="alert alert-light border mt-4 mb-0 small">Demo: <code>03001234567</code> / <code>password</code></div>

@@ -157,7 +157,7 @@ class TenantProvisioner
         $i = 2;
 
         while (Tenant::query()->where('slug', $slug)->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->exists()
-            || in_array($slug, ['admin', 'app', 'portal', 'api', 'login', 'www'], true)) {
+            || in_array($slug, Tenant::RESERVED_SLUGS, true)) {
             $slug = $base.'-'.$i++;
         }
 

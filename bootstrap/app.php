@@ -2,6 +2,7 @@
 
 use App\Exceptions\BusinessException;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsureStoreOpen;
 use App\Http\Middleware\IdentifyTenant;
 use App\Http\Middleware\ResetTenantContext;
 use App\Http\Middleware\ResolvePortalTenant;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => IdentifyTenant::class,
             'portal.tenant' => ResolvePortalTenant::class,
             'role' => EnsureRole::class,
+            'store.open' => EnsureStoreOpen::class,
         ]);
 
         // Tenant context must exist before route-model binding resolves
@@ -36,13 +38,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->redirectGuestsTo(fn (Request $request) => match (true) {
             $request->is('admin', 'admin/*') => route('admin.login'),
-            $request->is('portal/*') => route('portal.login', ['tenant' => $request->route('tenant') instanceof Tenant ? $request->route('tenant')->slug : $request->route('tenant')]),
+            (bool) $request->route()?->named('portal.*') => route('portal.login', ['tenant' => $request->route('tenant') instanceof Tenant ? $request->route('tenant')->slug : $request->route('tenant')]),
             default => route('app.login'),
         });
 
         $middleware->redirectUsersTo(fn (Request $request) => match (true) {
             $request->is('admin', 'admin/*') => route('admin.dashboard'),
-            $request->is('portal/*') => route('portal.dashboard', ['tenant' => $request->route('tenant') instanceof Tenant ? $request->route('tenant')->slug : $request->route('tenant')]),
+            (bool) $request->route()?->named('portal.*') => route('portal.dashboard', ['tenant' => $request->route('tenant') instanceof Tenant ? $request->route('tenant')->slug : $request->route('tenant')]),
             default => route('app.dashboard'),
         });
     })

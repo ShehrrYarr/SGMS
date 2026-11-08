@@ -33,13 +33,14 @@ class ReportService
         'customer' => 'Customer',
         'day' => 'Day',
         'payment' => 'Payment account',
+        'channel' => 'Channel',
     ];
 
     /** Invoice-level discount spread over the lines, excluding tax. */
     protected const LINE_NET = 'CAST(sale_items.total_price * (sales.subtotal - sales.discount) AS DECIMAL(30,10)) / NULLIF(sales.subtotal, 0)';
 
     /** Return value excluding the tax share of its invoice (high precision before dividing). */
-    protected const RETURN_NET = 'CAST(sale_returns.total_amount * (sales.total_amount - sales.tax) AS DECIMAL(30,10)) / NULLIF(sales.total_amount, 0)';
+    protected const RETURN_NET = 'CAST(sale_returns.total_amount * (sales.total_amount - sales.shipping_fee - sales.tax) AS DECIMAL(30,10)) / NULLIF(sales.total_amount - sales.shipping_fee, 0)';
 
     /* =====================================================================
      | Profit & loss
@@ -52,7 +53,7 @@ class ReportService
         $sales = Sale::query()
             ->whereIn('sales.branch_id', $branchIds)
             ->whereBetween('sales.sale_date', [$start, $end])
-            ->selectRaw('COUNT(*) invoices, COALESCE(SUM(discount), 0) invoice_discount, COALESCE(SUM(tax), 0) tax, COALESCE(SUM(total_amount), 0) total')
+            ->selectRaw('COUNT(*) invoices, COALESCE(SUM(discount), 0) invoice_discount, COALESCE(SUM(tax), 0) tax, COALESCE(SUM(shipping_fee), 0) delivery, COALESCE(SUM(total_amount), 0) total')
             ->first();
 
         $items = $this->saleItems($start, $end, $branchIds)
@@ -88,7 +89,8 @@ class ReportService
         $discounts = (float) $items->line_discount + (float) $sales->invoice_discount;
         $netSales = $gross - $discounts;
         $returnsValue = (float) $returns->net_value;
-        $netRevenue = $netSales - $returnsValue;
+        $delivery = (float) $sales->delivery;
+        $netRevenue = $netSales - $returnsValue + $delivery;
         $cogs = (float) $items->cogs - $returnedCost;
         $grossProfit = $netRevenue - $cogs;
         $expenseTotal = (float) $expenses->sum('total');
@@ -100,6 +102,7 @@ class ReportService
             'net_sales' => $netSales,
             'returns' => $returnsValue,
             'returns_count' => (int) $returns->cnt,
+            'delivery' => $delivery,
             'net_revenue' => $netRevenue,
             'cogs' => $cogs,
             'gross_profit' => $grossProfit,
@@ -197,6 +200,7 @@ class ReportService
             'branch' => tap(['sales.branch_id', 'branches.name', 'MAX(branches.code)'], fn () => $query->join('branches', 'branches.id', '=', 'sales.branch_id')),
             'customer' => tap(['sales.customer_id', "COALESCE(customers.name, 'Walk-in customers')", 'MAX(customers.phone)'], fn () => $query->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')),
             'day' => ['DATE(sales.sale_date)', 'DATE(sales.sale_date)', 'NULL'],
+            'channel' => ['sales.channel', "CASE sales.channel WHEN 'online' THEN 'Online store' ELSE 'In-store (POS)' END", 'NULL'],
             default => throw new \InvalidArgumentException("Unknown group [{$group}]."),
         };
 

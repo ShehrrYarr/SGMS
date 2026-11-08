@@ -1,0 +1,101 @@
+/* Linen — calm, modern everyday store.
+   Palette: paper #FAFAF7 · white #FFFFFF · ink #1B1F2A · indigo #2F4AA0 · stone #E4E2DC
+   Type: Schibsted Grotesk throughout (news grotesk: plain-spoken, sturdy at small sizes).
+   Memorable moment: the split hero whose photo bleeds off the rounded panel. */
+:root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --ink: #1b1f2a;
+    --muted: #646a76;
+    --line: #e4e2dc;
+    --soft: #f1f0ec;
+    --img-bg: #eeece6;
+    --font-body: "Schibsted Grotesk", system-ui, sans-serif;
+    --font-display: "Schibsted Grotesk", system-ui, sans-serif;
+    --display-weight: 800;
+    --display-tracking: -0.025em;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --radius-img: 12px;
+    --radius-btn: 999px;
+    --header-h: 112px;
+}
+
+.ln-announce { background: var(--ink); color: var(--bg); text-align: center; font-size: .85rem; padding: 8px 16px; }
+
+.ln-header { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+.ln-header__bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; min-height: 64px; }
+.ln-logo { justify-self: center; }
+.sf-logo__text { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; letter-spacing: -0.03em; }
+.ln-search { max-width: 420px; width: 100%; justify-self: center; }
+@media (min-width: 1024px) {
+    .ln-header__bar { grid-template-columns: auto 1fr auto; gap: 32px; }
+    .ln-logo { justify-self: start; }
+}
+.ln-nav { border-top: 1px solid var(--line); }
+.ln-nav__inner { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.ln-nav__inner::-webkit-scrollbar { display: none; }
+.ln-nav a { flex: none; padding: 12px 14px; font-weight: 600; font-size: .93rem; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; }
+.ln-nav a:hover, .ln-nav a.is-on { color: var(--ink); border-bottom-color: var(--ink); }
+.ln-nav__sale { color: var(--sale) !important; }
+@media (min-width: 1024px) { .ln-nav__inner { justify-content: center; } }
+
+/* Hero */
+.ln-hero { padding-top: 20px; }
+.ln-hero__track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: var(--radius); }
+.ln-hero__track::-webkit-scrollbar { display: none; }
+.ln-hero__slide { flex: 0 0 100%; scroll-snap-align: start; display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.ln-hero__track .ln-hero__slide { border-radius: 0; border: 0; }
+.ln-hero__track { border: 1px solid var(--line); }
+.ln-hero__media { aspect-ratio: 4 / 3; background: var(--img-bg); }
+.ln-hero__media img { width: 100%; height: 100%; object-fit: cover; }
+.ln-hero__copy { padding: 28px 24px 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.ln-hero__title { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.035em; font-size: clamp(2rem, 1.3rem + 3.6vw, 4.2rem); line-height: 1.02; max-width: 14ch; }
+.ln-hero__sub { color: var(--muted); font-size: 1.08rem; max-width: 42ch; }
+.ln-hero__slide--plain { background: var(--soft); }
+.ln-hero__slide--plain .ln-hero__copy { padding: 56px 24px; }
+.ln-hero__dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.ln-hero__dots button { width: 28px; height: 4px; border: 0; padding: 0; border-radius: 2px; background: var(--line); }
+.ln-hero__dots button.is-on { background: var(--ink); }
+@media (min-width: 900px) {
+    .ln-hero__slide { grid-template-columns: 1.35fr 1fr; min-height: 520px; }
+    .ln-hero__media { aspect-ratio: auto; }
+    .ln-hero__copy { justify-content: center; padding: 48px 56px; }
+    .ln-hero__slide--plain { grid-template-columns: 1fr; min-height: 420px; }
+    .ln-hero__slide--plain .ln-hero__copy { padding: 80px 64px; }
+}
+
+/* Category tiles */
+.ln-cats__row { display: grid; grid-auto-flow: column; grid-auto-columns: 68%; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+.ln-cats__row::-webkit-scrollbar { display: none; }
+@media (min-width: 768px) { .ln-cats__row { grid-auto-flow: row; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 0; gap: 20px; } }
+.ln-cat { scroll-snap-align: start; text-decoration: none; display: flex; flex-direction: column; gap: 2px; }
+.ln-cat__media { aspect-ratio: 3 / 4; border-radius: var(--radius-img); overflow: hidden; background: var(--img-bg); margin-bottom: 10px; }
+.ln-cat__media img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
+.ln-cat:hover .ln-cat__media img { transform: scale(1.03); }
+.ln-cat__name { font-weight: 700; font-size: 1.1rem; }
+.ln-cat__count { color: var(--muted); font-size: .88rem; }
+
+.ln-band { background: var(--soft); }
+
+.ln-service { border-top: 1px solid var(--line); background: var(--surface); }
+.ln-service__grid { display: grid; gap: 20px; padding-block: 32px; }
+@media (min-width: 768px) { .ln-service__grid { grid-template-columns: repeat(3, 1fr); } }
+.ln-service__grid > div { display: flex; gap: 14px; align-items: flex-start; }
+.ln-service__grid .sf-icon { width: 28px; height: 28px; color: var(--accent); }
+.ln-service__grid p { display: flex; flex-direction: column; }
+.ln-service__grid span { color: var(--muted); font-size: .92rem; }
+
+/* Cards */
+.sf--linen .sf-card__title { font-weight: 600; }
+
+/* Footer */
+.ln-footer { background: var(--ink); color: color-mix(in srgb, var(--bg) 88%, var(--ink)); padding-top: 48px; }
+.ln-footer a { color: inherit; }
+.ln-footer__grid { display: grid; gap: 32px; padding-bottom: 40px; }
+@media (min-width: 768px) { .ln-footer__grid { grid-template-columns: 1.4fr repeat(3, 1fr); } }
+.ln-footer__brand { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+.ln-footer__brand .sf-logo img { filter: brightness(0) invert(1); }
+.sf-footcol__title { font-size: .95rem; font-weight: 700; margin-bottom: 14px; color: var(--bg); }
+.sf-footer-contact li { display: flex; gap: 8px; align-items: flex-start; }
+.ln-footer__base { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-block: 18px; border-top: 1px solid rgb(255 255 255 / .12); font-size: .85rem; opacity: .75; }

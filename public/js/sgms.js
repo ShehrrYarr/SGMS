@@ -112,6 +112,24 @@
       return getComputedStyle(root).getPropertyValue('--bs-' + name).trim() || fallback;
     },
 
+    /** Short two-note chime for new online orders (no audio file needed). */
+    chime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [[880, 0], [1320, 0.16]].forEach(([freq, at]) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+          gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.35);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(ctx.currentTime + at);
+          osc.stop(ctx.currentTime + at + 0.4);
+        });
+      } catch (e) { /* audio blocked until the user interacts with the page */ }
+    },
+
     money(value, symbol) {
       const n = Number(value || 0);
       const s = symbol ?? (window.SGMS_CURRENCY || 'Rs.');

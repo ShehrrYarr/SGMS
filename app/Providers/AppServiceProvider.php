@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsureStoreOpen;
 use App\Http\Middleware\IdentifyTenant;
 use App\Http\Middleware\ResolvePortalTenant;
 use App\Models\User;
+use App\Services\Store\Cart;
+use App\Services\Store\WishlistService;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
@@ -20,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
     {
         // One tenant context per request / job (Octane & queue safe).
         $this->app->scoped(TenantContext::class);
+
+        // Shopper state for the online store, one per request.
+        $this->app->scoped(Cart::class);
+        $this->app->scoped(WishlistService::class);
+        $this->app->scoped(\App\Support\Store\Storefront::class);
     }
 
     public function boot(): void
@@ -29,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         // Re-apply tenant + role middleware on every Livewire update request.
         Livewire::addPersistentMiddleware([
             ResolvePortalTenant::class,
+            EnsureStoreOpen::class,
             IdentifyTenant::class,
             EnsureRole::class,
         ]);

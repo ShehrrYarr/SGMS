@@ -29,6 +29,10 @@ class ProductService
                 'base_cost' => round_money($data['base_cost'] ?? 0),
                 'base_price' => round_money($data['base_price'] ?? 0),
                 'status' => $data['status'] ?? 'active',
+                'size_chart' => $data['size_chart'] ?? null,
+                'compare_at_price' => isset($data['compare_at_price']) && (float) $data['compare_at_price'] > 0 ? round_money($data['compare_at_price']) : null,
+                'show_online' => (bool) ($data['show_online'] ?? true),
+                'is_featured' => (bool) ($data['is_featured'] ?? false),
             ]);
         });
     }
