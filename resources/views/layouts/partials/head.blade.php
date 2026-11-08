@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex">
 <title>{{ $title ?? 'Dashboard' }} · {{ $brand ?? config('app.name') }}</title>
 <link rel="shortcut icon" href="{{ asset('assets/images/Favicon.png') }}">
-<link rel="stylesheet" href="{{ asset('assets/css/icons.min.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/icons.min.css') }}?v={{ @filemtime(public_path('assets/css/icons.min.css')) }}">
 <link rel="stylesheet" href="{{ asset('assets/libs/sweetalert2/sweetalert2.min.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/app.min.css') }}">
