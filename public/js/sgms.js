@@ -23,6 +23,13 @@
       root.setAttribute('data-main-layout', layout);
     },
 
+    /** Everything on <html> that depends on this browser, not on the server. */
+    applyClientState() {
+      const theme = store.get('sgms-theme');
+      if (theme) root.setAttribute('data-bs-theme', theme);
+      this.applyLayout();
+    },
+
     toggleSidebar() {
       const next = root.getAttribute('data-main-layout') === 'small-icon' ? 'vertical' : 'small-icon';
       store.set('sgms-sidebar', next);
@@ -140,9 +147,18 @@
   window.SGMS = SGMS;
 
   // Apply before first paint.
-  const savedTheme = store.get('sgms-theme');
-  if (savedTheme) root.setAttribute('data-bs-theme', savedTheme);
-  SGMS.applyLayout();
+  SGMS.applyClientState();
+
+  // wire:navigate copies the new page's <html> attributes over the current ones
+  // (Livewire's replaceHtmlAttributes). Those are the server's defaults: the
+  // desktop sidebar layout and the light theme, because the server can't know
+  // the screen width or the saved theme. Without this, every in-app navigation
+  // on a phone brought back the desktop sidebar (and turned dark mode off).
+  // onSwap runs right after the swap and before the browser paints, for menu
+  // links and for Back/Forward alike, so the wrong layout is never shown.
+  document.addEventListener('livewire:navigating', (e) => {
+    e.detail?.onSwap?.(() => SGMS.applyClientState());
+  });
 
   let resizeTimer;
   window.addEventListener('resize', () => {
@@ -192,6 +208,7 @@
 
   // Runs on first load and after every wire:navigate visit.
   document.addEventListener('livewire:navigated', () => {
+    SGMS.applyClientState(); // safety net if a Livewire version lacks onSwap
     SGMS.flash();
     document.querySelectorAll('.offcanvas-backdrop').forEach((el) => el.remove());
     document.body.style.removeProperty('overflow');
