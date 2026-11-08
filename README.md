@@ -169,6 +169,29 @@ Missing history can be rebuilt from stock movements (valued at today's cost):
 php artisan sgms:stock-snapshot --days=90
 ```
 
+## Production (sub-folder install)
+
+The live demo runs at `http://23.230.253.206/sgms` (Apache `Alias /sgms` →
+`/var/www/SGMS/public`, config in `/etc/apache2/conf-available/sgms.conf`).
+`.env` sets `APP_URL=http://23.230.253.206/sgms`, `ASSET_URL=/sgms` and
+`SESSION_PATH=/sgms`. Livewire builds its script and update URLs from the domain
+root, so `App\Support\Livewire\SubdirectoryHandleRequests` puts the folder back;
+at the domain root it changes nothing.
+
+**Do not run `route:cache` or `optimize` there.** With cached routes Laravel
+trims the slash from `/sgms/` before matching, loses the folder, and the store
+route `/{shop}` answers with a 404. Cache config, events and views instead.
+
+To update after a push (as root on the server):
+
+```bash
+cd /var/www/SGMS && git pull && composer install --no-dev --optimize-autoloader \
+  && runuser -u www-data -- php artisan migrate --force \
+  && runuser -u www-data -- php artisan config:cache \
+  && runuser -u www-data -- php artisan event:cache \
+  && runuser -u www-data -- php artisan view:cache
+```
+
 ## Frontend
 
 The Herozi template's compiled assets in `public/assets` are used as-is. App-specific
