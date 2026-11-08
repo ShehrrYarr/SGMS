@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\BusinessException;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -58,6 +59,37 @@ class PaymentAccount extends Model
     public function scopeUsableAt(Builder $query, ?int $branchId): Builder
     {
         return $query->where(fn (Builder $q) => $q->whereNull('branch_id')->orWhere('branch_id', $branchId));
+    }
+
+    /**
+     * The account a payment or refund may move money through. It must be
+     * active, shop-wide or the drawer of $branchId (when the money belongs to a
+     * branch), and in a branch the signed-in user can access. Every service
+     * that takes an account id from a form goes through here, so a tampered id
+     * cannot pay or refund out of another branch's drawer.
+     */
+    public static function usableOrFail(?int $id, ?int $branchId, string $missing = 'Choose the account to use.'): self
+    {
+        $account = $id ? static::query()->find($id) : null;
+
+        if (! $account) {
+            throw new BusinessException($missing);
+        }
+
+        if ($account->status !== 'active') {
+            throw new BusinessException("{$account->account_name} is inactive.");
+        }
+
+        if ($account->branch_id !== null) {
+            $context = tenancy();
+
+            if (($branchId !== null && $account->branch_id !== $branchId)
+                || ($context->user() && ! $context->canAccessBranch($account->branch_id))) {
+                throw new BusinessException("{$account->account_name} belongs to another branch. Use this branch's drawer or a shop-wide account.");
+            }
+        }
+
+        return $account;
     }
 
     public function isCash(): bool

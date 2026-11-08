@@ -54,6 +54,14 @@ class PurchaseService
             throw new BusinessException('Payments ('.money($paid).') exceed the lot cost ('.money($total).').');
         }
 
+        // The vendor is owed the lot cost and stock is valued from the item costs,
+        // so the two must agree (within the paisa left over by per-piece averaging).
+        $itemsCost = round_money($items->sum(fn ($row) => (int) $row['quantity'] * (float) ($row['cost_per_item'] ?? 0)));
+
+        if (abs($total - $itemsCost) > max(1, $items->sum(fn ($row) => (int) $row['quantity']) * 0.01)) {
+            throw new BusinessException('Item costs add up to '.money($itemsCost).' but the lot cost is '.money($total).'. Adjust the costs or the lot total.');
+        }
+
         return DB::transaction(function () use ($data, $items, $payments, $total, $paid) {
             $vendor = Vendor::query()->findOrFail($data['vendor_id']);
             $date = $data['purchase_date'] ?? today()->toDateString();
@@ -93,7 +101,7 @@ class PurchaseService
             $accounts = PaymentAccount::query()->whereIn('id', $payments->pluck('payment_account_id'))->get()->keyBy('id');
 
             foreach ($payments as $payment) {
-                $account = $accounts->get($payment['payment_account_id']) ?? throw new BusinessException('Payment account not found.');
+                $account = PaymentAccount::usableOrFail((int) $payment['payment_account_id'], $purchase->branch_id, 'Payment account not found.');
                 $this->payPurchase($purchase, $account, (float) $payment['amount'], $date, $payment['reference_no'] ?? null);
             }
 
@@ -119,7 +127,7 @@ class PurchaseService
                 throw new BusinessException('Amount must be between 0 and the due amount ('.money($purchase->due_amount).').');
             }
 
-            $account = PaymentAccount::query()->findOrFail($accountId);
+            $account = PaymentAccount::usableOrFail($accountId, $purchase->branch_id);
             $payment = $this->payPurchase($purchase, $account, $amount, $date ?? today()->toDateString(), $reference, $note);
             $this->applyToPurchase($purchase, $amount, $account);
 
@@ -141,7 +149,7 @@ class PurchaseService
 
         return DB::transaction(function () use ($vendor, $accountId, $amount, $date, $reference, $note) {
             $date ??= today()->toDateString();
-            $account = PaymentAccount::query()->findOrFail($accountId);
+            $account = PaymentAccount::usableOrFail($accountId, null);
 
             $entry = $this->ledger->postVendor($vendor->id, 'payment', $amount, 0, [
                 'payment_account_id' => $account->id,

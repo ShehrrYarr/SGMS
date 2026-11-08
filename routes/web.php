@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchSwitchController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\OrderProofController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PrintController;
 use App\Http\Controllers\Store\CartController;
@@ -32,7 +33,7 @@ use Livewire\Volt\Volt;
 // Product landing page + one-click demo sign-in (demo only when SGMS_DEMO is on).
 Route::get('/', LandingController::class)->name('landing');
 Route::post('demo/{role}', [DemoController::class, 'enter'])
-    ->whereIn('role', Demo::ROLES)->middleware('throttle:30,1')->name('demo.enter');
+    ->whereIn('role', Demo::ROLES)->middleware('throttle:demo')->name('demo.enter');
 
 /* -------------------------------------------------------------------------
  | Super Admin
@@ -108,6 +109,7 @@ Route::prefix('app')->name('app.')->group(function () {
 
             Volt::route('orders', 'app.orders.index')->name('orders.index');
             Volt::route('orders/{order}', 'app.orders.show')->name('orders.show');
+            Route::get('orders/{order}/receipt', OrderProofController::class)->name('orders.proof');
             Volt::route('coupons', 'app.coupons')->name('coupons');
             Volt::route('reviews', 'app.reviews')->name('reviews');
 
@@ -163,12 +165,12 @@ Route::prefix('{tenant}')->where(['tenant' => Tenant::SLUG_ROUTE_PATTERN])->midd
         Route::get('shop', [StorefrontController::class, 'shop'])->name('shop');
         Route::get('category/{category:slug}', [StorefrontController::class, 'category'])->name('category');
         Route::get('product/{slug}', [StorefrontController::class, 'product'])->name('product');
-        Route::post('product/{product}/reviews', [StorefrontController::class, 'review'])->name('review')->whereNumber('product')->middleware('throttle:10,1');
+        Route::post('product/{product}/reviews', [StorefrontController::class, 'review'])->name('review')->whereNumber('product')->middleware('throttle:store-review');
 
         Route::get('bag', [CartController::class, 'show'])->name('cart');
         Route::get('bag/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
-        Route::post('bag', [CartController::class, 'add'])->name('cart.add')->middleware('throttle:60,1');
-        Route::post('bag/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon')->middleware('throttle:20,1');
+        Route::post('bag', [CartController::class, 'add'])->name('cart.add')->middleware('throttle:store-bag');
+        Route::post('bag/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon')->middleware('throttle:store-coupon');
         Route::delete('bag/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
         Route::patch('bag/{variant}', [CartController::class, 'update'])->name('cart.update')->whereNumber('variant');
         Route::delete('bag/{variant}', [CartController::class, 'remove'])->name('cart.remove')->whereNumber('variant');
@@ -176,9 +178,9 @@ Route::prefix('{tenant}')->where(['tenant' => Tenant::SLUG_ROUTE_PATTERN])->midd
         Volt::route('checkout', 'store.checkout')->name('checkout');
 
         Route::get('track', [StoreOrderController::class, 'track'])->name('track');
-        Route::post('track', [StoreOrderController::class, 'lookup'])->name('track.lookup')->middleware('throttle:10,1');
+        Route::post('track', [StoreOrderController::class, 'lookup'])->name('track.lookup')->middleware('throttle:store-track');
         Route::get('orders/{order}', [StoreOrderController::class, 'show'])->name('order');
-        Route::post('orders/{order}/receipt', [StoreOrderController::class, 'receipt'])->name('order.receipt')->middleware('throttle:10,1');
+        Route::post('orders/{order}/receipt', [StoreOrderController::class, 'receipt'])->name('order.receipt')->middleware('throttle:store-receipt');
 
         Route::get('wishlist', [WishlistController::class, 'index'])->name('wishlist');
         Route::post('wishlist/{product}', [WishlistController::class, 'toggle'])->name('wishlist.toggle')->whereNumber('product');

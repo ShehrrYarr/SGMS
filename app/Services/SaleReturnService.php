@@ -66,13 +66,29 @@ class SaleReturnService
             }
 
             $total = round_money($total);
+
+            // The last return of an invoice refunds exactly what is left of it, so
+            // per-unit rounding never over-refunds (or strands) a few paisa.
+            $stillReturnable = (int) SaleItem::query()->where('sale_id', $sale->id)->sum(DB::raw('quantity - returned_quantity'));
+
+            if (array_sum($quantities) >= $stillReturnable && $lines) {
+                $exact = round_money((float) $sale->total_amount - (float) $sale->shipping_fee - (float) $sale->returned_amount);
+                $difference = round_money($exact - $total);
+
+                if ($difference != 0.0 && abs($difference) < 1) {
+                    $last = array_key_last($lines);
+                    $lines[$last]['lineTotal'] = round_money($lines[$last]['lineTotal'] + $difference);
+                    $total = $exact;
+                }
+            }
+
             $adjusted = round_money(min((float) $sale->due_amount, $total));
             $remaining = round_money($total - $adjusted);
 
             $account = null;
 
             if (in_array($method, ['cash', 'bank', 'wallet'], true) && $remaining > 0) {
-                $account = PaymentAccount::query()->find($accountId) ?? throw new BusinessException('Choose the account to refund from.');
+                $account = PaymentAccount::usableOrFail($accountId, $sale->branch_id, 'Choose the account to refund from.');
             }
 
             $return = SaleReturn::create([
@@ -151,7 +167,7 @@ class SaleReturnService
                 throw new BusinessException('Account credit is only available for registered customers.');
             }
 
-            $account = $method === 'ledger' ? null : (PaymentAccount::query()->find($accountId) ?? throw new BusinessException('Choose the account to refund from.'));
+            $account = $method === 'ledger' ? null : PaymentAccount::usableOrFail($accountId, $return->branch_id, 'Choose the account to refund from.');
 
             $this->settle($return, $return->sale, $method, $return->exchange_credit, $account);
             $return->forceFill(['status' => 'completed', 'refund_method' => $method, 'payment_account_id' => $account?->id])->save();

@@ -63,7 +63,7 @@ class OrderService
             }
         }
 
-        $proofPath = $proof?->store('payments/'.tenant_id(), 'public');
+        $proofPath = $proof?->store(Order::PROOF_DIR.'/'.tenant_id(), Order::PROOF_DISK);
 
         try {
             $order = DB::transaction(function () use ($data, $customer, $lines, $method, $accountId, $proofPath) {
@@ -145,7 +145,7 @@ class OrderService
             }, 3);
         } catch (\Throwable $e) {
             if ($proofPath) {
-                Storage::disk('public')->delete($proofPath);
+                Storage::disk(Order::PROOF_DISK)->delete($proofPath);
             }
 
             throw $e;
@@ -166,13 +166,13 @@ class OrderService
 
         $old = $order->payment_proof;
         $order->forceFill([
-            'payment_proof' => $proof->store('payments/'.tenant_id(), 'public'),
+            'payment_proof' => $proof->store(Order::PROOF_DIR.'/'.tenant_id(), Order::PROOF_DISK),
             'payment_reference' => $reference ?: $order->payment_reference,
             'payment_status' => 'awaiting',
         ])->save();
 
         if ($old) {
-            Storage::disk('public')->delete($old);
+            Order::deleteProof($old);
         }
 
         return $order;
@@ -321,7 +321,7 @@ class OrderService
             if ($order->sale) {
                 $sale = $order->sale;
                 $refundAccountId ??= $order->payment_account_id;
-                $refundAccount = $refundAccountId ? PaymentAccount::query()->find($refundAccountId) : null;
+                $refundAccount = $refundAccountId ? PaymentAccount::usableOrFail($refundAccountId, $sale->branch_id, 'Choose the account to refund the customer from.') : null;
                 $paid = (float) $sale->paid_amount > 0;
 
                 if ($paid && ! $refundAccount) {

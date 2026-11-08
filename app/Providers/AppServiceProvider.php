@@ -11,7 +11,10 @@ use App\Services\Store\Cart;
 use App\Services\Store\WishlistService;
 use App\Support\Livewire\SubdirectoryHandleRequests;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +65,14 @@ class AppServiceProvider extends ServiceProvider
         Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation) {
             Log::warning(sprintf('N+1 query: lazy loading [%s] on [%s].', $relation, $model::class));
         });
+
+        // Rate limits: one counter per action and visitor. (Plain "throttle:10,1"
+        // shares a single counter per IP across every route that uses it, so a
+        // shopper adding items to the bag could be blocked from tracking an order.)
+        foreach (['demo' => 30, 'store-bag' => 60, 'store-coupon' => 20, 'store-track' => 10, 'store-review' => 10, 'store-receipt' => 10] as $name => $perMinute) {
+            RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)
+                ->by($name.'|'.(auth('customer')->id() ?? $request->ip())));
+        }
 
         Gate::define('manage', fn (User $user) => $user->canManage());
         Gate::define('owner', fn (User $user) => $user->isOwner());

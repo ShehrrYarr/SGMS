@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureStoreOpen;
 use App\Http\Middleware\IdentifyTenant;
 use App\Http\Middleware\ResetTenantContext;
 use App\Http\Middleware\ResolvePortalTenant;
+use App\Http\Middleware\SecurityHeaders;
 use App\Models\Tenant;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(prepend: [ResetTenantContext::class]);
+        $middleware->web(prepend: [ResetTenantContext::class], append: [SecurityHeaders::class]);
 
         $middleware->alias([
             'tenant' => IdentifyTenant::class,

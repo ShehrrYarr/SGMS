@@ -27,6 +27,17 @@ return [
     ],
 
     /*
+     | Platform super admin created by the seeder (and by the nightly demo
+     | reset). Locally it defaults to admin@platform.com / password. In
+     | production there is no default password: set SGMS_ADMIN_PASSWORD, or the
+     | seeder gives the account a random one nobody knows.
+     */
+    'admin' => [
+        'email' => env('SGMS_ADMIN_EMAIL', 'admin@platform.com'),
+        'password' => env('SGMS_ADMIN_PASSWORD', env('APP_ENV', 'production') === 'production' ? null : 'password'),
+    ],
+
+    /*
      | Plans shown on the landing page (no prices; "Ask for a price" opens WhatsApp).
      | Keys match Tenant::PLANS.
      */

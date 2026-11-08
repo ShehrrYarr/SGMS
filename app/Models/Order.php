@@ -18,6 +18,11 @@ class Order extends Model
 {
     use BelongsToTenant;
 
+    /** Payment receipts: private disk, never a public URL. */
+    public const PROOF_DISK = 'local';
+
+    public const PROOF_DIR = 'payments';
+
     public const STATUSES = [
         'pending' => 'New',
         'confirmed' => 'Confirmed',
@@ -151,9 +156,34 @@ class Order extends Model
         return self::PAYMENT_STATUSES[$this->payment_status] ?? ucfirst($this->payment_status);
     }
 
+    /**
+     * Payment receipts are personal (names, account numbers), so they live on
+     * the private disk and are only served through app.orders.proof to staff.
+     * Receipts saved before this change may still be on the public disk.
+     */
     public function getPaymentProofUrlAttribute(): ?string
     {
-        return $this->payment_proof ? Storage::disk('public')->url($this->payment_proof) : null;
+        return $this->payment_proof ? route('app.orders.proof', $this) : null;
+    }
+
+    /** The disk that holds this order's receipt, or null when the file is gone. */
+    public function proofDisk(): ?string
+    {
+        foreach ([self::PROOF_DISK, 'public'] as $disk) {
+            if ($this->payment_proof && Storage::disk($disk)->exists($this->payment_proof)) {
+                return $disk;
+            }
+        }
+
+        return null;
+    }
+
+    public static function deleteProof(?string $path): void
+    {
+        if ($path) {
+            Storage::disk(self::PROOF_DISK)->delete($path);
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /** Progress steps for the tracking timeline: [label => reached at]. */

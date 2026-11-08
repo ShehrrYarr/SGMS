@@ -38,12 +38,13 @@ use Illuminate\Database\Seeder;
 use Database\Seeders\Support\GarmentArt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Demo data. Every financial record is created through the real services,
  * so ledgers, account balances and stock all reconcile.
  *
- *   Super admin   admin@platform.com        / password   -> /admin
+ *   Super admin   admin@platform.com        / password   -> /admin   (locally; see SGMS_ADMIN_* in production)
  *   Shop owner    owner@urbangarments.com  / password   -> /app
  *   Manager       manager@urbangarments.com / password  -> /app (City Mall)
  *   Cashier       cashier@urbangarments.com / password  -> /app (Main Store)
@@ -54,9 +55,17 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Never the public demo password in production: SGMS_ADMIN_PASSWORD or a random one.
+        $adminPassword = config('sgms.admin.password');
+
+        if (! $adminPassword) {
+            $adminPassword = Str::password(32);
+            $this->command?->warn('SGMS_ADMIN_PASSWORD is not set: the super admin got a random password. Set it in .env and reseed to choose one.');
+        }
+
         SuperAdmin::updateOrCreate(
-            ['email' => 'admin@platform.com'],
-            ['name' => 'Platform Admin', 'password' => 'password'],
+            ['email' => config('sgms.admin.email')],
+            ['name' => 'Platform Admin', 'password' => $adminPassword],
         );
 
         $provisioner = app(TenantProvisioner::class);
@@ -269,10 +278,10 @@ class DatabaseSeeder extends Seeder
             'lot_number' => 'LOT-AUT-01',
             'lot_name' => 'Autumn Restock Lot',
             'purchase_date' => today()->subDays(50)->toDateString(),
-            'total_lot_cost' => 146600,
+            'total_lot_cost' => 125600,
             'items' => $items,
         ]);
-        $purchases->payVendor($mills, $meezan->id, 146600, today()->subDays(30)->toDateString(), 'MZN-CHQ-40112', 'Autumn lot settlement');
+        $purchases->payVendor($mills, $meezan->id, 125600, today()->subDays(30)->toDateString(), 'MZN-CHQ-40112', 'Autumn lot settlement');
 
         $variants = ProductVariant::query()->with('product')->get();
 

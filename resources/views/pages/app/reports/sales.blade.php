@@ -16,6 +16,26 @@ new #[Layout('layouts.app')] #[Title('Sales Analysis')] class extends Component 
     #[Url(except: 'revenue')]
     public string $sort = 'revenue';
 
+    /** ?group= and ?sort= come from the URL: fall back to the defaults for unknown values. */
+    public function mount(): void
+    {
+        if (! array_key_exists($this->group, ReportService::SALES_GROUPS)) {
+            $this->group = 'category';
+        }
+
+        $this->sortBy($this->sort);
+    }
+
+    public function updatedGroup(): void
+    {
+        $this->mount();
+    }
+
+    public function updatedSort(): void
+    {
+        $this->sortBy($this->sort);
+    }
+
     public function setGroup(string $group): void
     {
         $this->group = array_key_exists($group, ReportService::SALES_GROUPS) ? $group : 'category';

@@ -69,7 +69,8 @@ class SaleService
             }
 
             $payments = collect($data['payments'] ?? [])->filter(fn ($p) => round_money($p['amount'] ?? 0) > 0)->values();
-            $accounts = PaymentAccount::query()->whereIn('id', $payments->pluck('payment_account_id'))->get()->keyBy('id');
+            $accounts = $payments->pluck('payment_account_id')->unique()
+                ->mapWithKeys(fn ($id) => [(int) $id => PaymentAccount::usableOrFail((int) $id, (int) $data['branch_id'], 'Payment account not found.')]);
             $moneyPaid = round_money($payments->sum('amount'));
             $paid = round_money($moneyPaid + $exchangeApplied);
             $total = $totals['total'];
@@ -145,7 +146,7 @@ class SaleService
 
         return DB::transaction(function () use ($customer, $accountId, $amount, $date, $reference, $note) {
             $date ??= today()->toDateString();
-            $account = PaymentAccount::query()->findOrFail($accountId);
+            $account = PaymentAccount::usableOrFail($accountId, null);
 
             $entry = $this->ledger->postCustomer($customer->id, 'payment', 0, $amount, [
                 'payment_account_id' => $account->id,
@@ -210,7 +211,7 @@ class SaleService
                 throw new BusinessException("Invoice {$sale->invoice_number} has nothing left to pay.");
             }
 
-            $account = PaymentAccount::query()->findOrFail($accountId);
+            $account = PaymentAccount::usableOrFail($accountId, $sale->branch_id);
             $date = today()->toDateString();
 
             $this->accounts->credit($account->id, $amount, 'sale', $sale->id, $note ?: 'Payment for '.$sale->invoice_number, $sale->branch_id);
@@ -272,7 +273,7 @@ class SaleService
             }
 
             if ($refund > 0) {
-                $account = PaymentAccount::query()->find($refundAccountId) ?? throw new BusinessException('Choose the account to refund the delivery charge from.');
+                $account = PaymentAccount::usableOrFail($refundAccountId, $sale->branch_id, 'Choose the account to refund the delivery charge from.');
                 $this->accounts->debit($account->id, $refund, 'sale_return', $sale->id, $note.' ('.$sale->invoice_number.')', $sale->branch_id);
 
                 if ($sale->customer_id) {
@@ -354,7 +355,7 @@ class SaleService
                 'sale_id' => $sale->id,
                 'payment_account_id' => $account->id,
                 'reference_no' => $reference ?: $sale->invoice_number,
-                'note' => 'Paid at POS via '.$account->account_name,
+                'note' => ($sale->channel === 'online' ? 'Paid online via ' : 'Paid at POS via ').$account->account_name,
                 'transaction_date' => $sale->sale_date->toDateString(),
             ])
             : null;

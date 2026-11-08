@@ -7,7 +7,14 @@
  * where every price and total is validated again.
  */
 document.addEventListener('alpine:init', () => {
-  const round = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  // Money rounding that matches PHP's round($x, 2) (half away from zero, after
+  // trimming float noise), so the till's totals always equal the server's.
+  // Plain Math.round(x * 100) / 100 is off by a paisa on values like 4.725.
+  const round = (n) => {
+    const x = Number(n) || 0;
+    const cents = parseFloat((Math.abs(x) * 100).toPrecision(15));
+    return (x < 0 ? -1 : 1) * Math.round(cents) / 100;
+  };
 
   Alpine.data('posTerminal', (config) => ({
     config,
