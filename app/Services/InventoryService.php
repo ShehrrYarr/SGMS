@@ -24,12 +24,13 @@ class InventoryService
         ?float $unitCost = null,
         ?string $note = null,
         bool $allowNegative = false,
+        ?\DateTimeInterface $movedAt = null,
     ): int {
         if ($quantity === 0) {
             return $this->available($branchId, $variantId);
         }
 
-        return DB::transaction(function () use ($branchId, $variantId, $quantity, $type, $referenceType, $referenceId, $unitCost, $note, $allowNegative) {
+        return DB::transaction(function () use ($branchId, $variantId, $quantity, $type, $referenceType, $referenceId, $unitCost, $note, $allowNegative, $movedAt) {
             $tenantId = tenant_id();
 
             DB::table('inventories')->insertOrIgnore([
@@ -68,6 +69,7 @@ class InventoryService
                 'reference_id' => $referenceId,
                 'unit_cost' => $unitCost,
                 'note' => $note,
+                'moved_at' => $movedAt ?? now(),
                 'created_by' => auth('web')->id(),
             ]);
 

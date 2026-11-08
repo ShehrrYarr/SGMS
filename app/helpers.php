@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Support\Carbon;
 
 if (! function_exists('tenancy')) {
     function tenancy(): TenantContext
@@ -48,6 +49,23 @@ if (! function_exists('money')) {
         $currency = tenant()?->currency_symbol ?? 'Rs.';
 
         return $sign.$currency.' '.$formatted;
+    }
+}
+
+if (! function_exists('business_time')) {
+    /**
+     * Timestamp for a business date: "now" for today, otherwise midday of that
+     * date (so back-dated lots and transfers land on the right day in reports).
+     */
+    function business_time(DateTimeInterface|string|null $date): Carbon
+    {
+        if ($date === null) {
+            return now();
+        }
+
+        $date = Carbon::parse($date);
+
+        return $date->isToday() ? now() : $date->copy()->setTime(12, 0);
     }
 }
 

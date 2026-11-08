@@ -210,3 +210,18 @@
   body.printing-labels .label-38x25, body.printing-labels .label-50x30 { break-after: page; page-break-after: always; }
   body.printing-labels .label-sheet.flex-column { gap: 0; }
 }
+
+/* ---- Reports ------------------------------------------------------------- */
+.share-bar { height: 6px; border-radius: 6px; background: var(--bs-light); overflow: hidden; min-width: 60px; }
+.share-bar span { display: block; height: 100%; background: var(--bs-primary); border-radius: 6px; }
+.flow-row { display: flex; justify-content: space-between; padding: .45rem 0; border-bottom: 1px dashed var(--bs-border-color); }
+.flow-row:last-child { border-bottom: 0; }
+
+/* Print a report page without the app chrome. */
+@media print {
+  body:not(.printing-labels) .app-sidebar, body:not(.printing-labels) .app-header,
+  body:not(.printing-labels) .small-screen-sidebar, body:not(.printing-labels) .sgms-footer { display: none !important; }
+  body:not(.printing-labels) .app-wrapper { margin: 0 !important; padding: 0 !important; }
+  body:not(.printing-labels) .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd !important; }
+  body:not(.printing-labels) .table-responsive { overflow: visible !important; }
+}

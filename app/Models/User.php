@@ -28,6 +28,9 @@ class User extends Authenticatable
         self::ROLE_CASHIER => 'Cashier',
     ];
 
+    /** Model-level defaults so new instances match the database defaults. */
+    protected $attributes = ['status' => 'active', 'role' => self::ROLE_CASHIER];
+
     protected $fillable = [
         'tenant_id', 'branch_id', 'name', 'email', 'phone',
         'password', 'role', 'status', 'last_login_at',

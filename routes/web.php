@@ -91,6 +91,11 @@ Route::prefix('app')->name('app.')->group(function () {
             Volt::route('accounts', 'app.accounts.index')->name('accounts.index');
             Volt::route('accounts/{account}', 'app.accounts.show')->name('accounts.show');
             Volt::route('expenses', 'app.expenses.index')->name('expenses.index');
+
+            Route::redirect('reports', '/app/reports/profit-loss')->name('reports');
+            Volt::route('reports/profit-loss', 'app.reports.profit-loss')->name('reports.profit-loss');
+            Volt::route('reports/sales', 'app.reports.sales')->name('reports.sales');
+            Volt::route('reports/stock', 'app.reports.stock')->name('reports.stock');
         });
 
         // Owner only

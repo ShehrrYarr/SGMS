@@ -228,7 +228,7 @@ class PurchaseService
                 'total_cost' => round_money($quantity * $cost),
             ]);
 
-            $this->inventory->adjust($purchase->branch_id, $variant->id, $quantity, 'purchase', 'purchase', $purchase->id, $cost, 'Lot '.$purchase->lot_number);
+            $this->inventory->adjust($purchase->branch_id, $variant->id, $quantity, 'purchase', 'purchase', $purchase->id, $cost, 'Lot '.$purchase->lot_number, movedAt: business_time($purchase->purchase_date));
         }
     }
 

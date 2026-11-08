@@ -84,6 +84,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component {
     <x-page-header :title="'Good '.(now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening')).', '.str($user->name)->before(' ')" :subtitle="now()->format('l, d F Y').' · '.(tenancy()->branches()->firstWhere('id', tenancy()->branchId())?->name ?? 'All branches')">
         <x-slot:actions>
             @if ($user->canManage())
+                <a href="{{ route('app.reports.profit-loss') }}" class="btn btn-light-info" wire:navigate><i class="ri-funds-line me-1"></i>Reports</a>
                 <a href="{{ route('app.purchases.create') }}" class="btn btn-light-primary" wire:navigate><i class="ri-inbox-archive-line me-1"></i>New lot</a>
             @endif
             <a href="{{ route('app.pos') }}" class="btn btn-primary"><i class="ri-shopping-cart-2-line me-1"></i>Open POS</a>

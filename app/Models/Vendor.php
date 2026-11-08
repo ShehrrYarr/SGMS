@@ -13,6 +13,9 @@ class Vendor extends Model
 {
     use BelongsToTenant, HasFactory, SoftDeletes;
 
+    /** Model-level defaults so new instances match the database defaults. */
+    protected $attributes = ['status' => 'active', 'opening_balance' => 0, 'current_balance' => 0];
+
     protected $fillable = [
         'tenant_id', 'name', 'company', 'phone', 'email', 'address',
         'opening_balance', 'current_balance', 'status',

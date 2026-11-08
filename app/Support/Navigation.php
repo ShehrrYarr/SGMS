@@ -36,6 +36,11 @@ class Navigation
                 ['label' => 'Barcode Labels', 'icon' => 'ri-barcode-line', 'route' => 'app.barcodes', 'active' => 'app.barcodes'],
                 ['label' => 'Attributes', 'icon' => 'ri-price-tag-3-line', 'route' => 'app.attributes', 'active' => 'app.attributes'],
             ]] : null,
+            $manage ? ['title' => 'Reports', 'items' => [
+                ['label' => 'Profit & Loss', 'icon' => 'ri-funds-line', 'route' => 'app.reports.profit-loss', 'active' => 'app.reports.profit-loss'],
+                ['label' => 'Sales Analysis', 'icon' => 'ri-bar-chart-grouped-line', 'route' => 'app.reports.sales', 'active' => 'app.reports.sales'],
+                ['label' => 'Stock Valuation', 'icon' => 'ri-line-chart-line', 'route' => 'app.reports.stock', 'active' => 'app.reports.stock'],
+            ]] : null,
             $manage ? ['title' => 'Finance', 'items' => [
                 ['label' => 'Payment Accounts', 'icon' => 'ri-bank-line', 'route' => 'app.accounts.index', 'active' => 'app.accounts.*'],
                 ['label' => 'Expenses', 'icon' => 'ri-wallet-3-line', 'route' => 'app.expenses.index', 'active' => 'app.expenses.*'],

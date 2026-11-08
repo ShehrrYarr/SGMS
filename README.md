@@ -79,6 +79,27 @@ running in a DB transaction with row locks:
 - **Inventory:** stock per branch, low/out-of-stock filters, physical count adjustments, movement history, branch transfers, barcode labels (thermal 38×25 / 50×30 mm, A4 sheets).
 - **Finance:** payment accounts, fund transfers, reconciliation, expenses.
 - **Customer portal:** purchase history with item detail, live statement, PDF download, printable receipts.
+- **Reports** (owner/manager, `/app/reports`), filterable by period (presets or custom) and branch, with print and CSV export:
+  - *Profit & loss:* gross sales → discounts → net sales (excluding tax) → returns → COGS → gross profit → expenses by category → inventory write-offs → net profit. Shows the previous period alongside, plus a 12-month trend.
+  - *Sales analysis:* net sales, cost, profit and margin grouped by category, product, brand, size, colour, staff, branch, customer or day, plus collections per payment account.
+  - *Stock valuation:* current value at cost and retail (by category or branch), value over time, stock flow (opening → received/sold/returned/transferred/adjusted → closing) and aged stock with no sales for 30–180 days.
+
+## Scheduler
+
+Stock valuation history comes from nightly snapshots (`sgms:stock-snapshot`, 23:55),
+which record the cost that applied on each day. Register the Laravel scheduler once:
+
+```bash
+# Linux cron
+* * * * * cd /path/to/sgms && php artisan schedule:run >> /dev/null 2>&1
+```
+
+On Windows, add a Task Scheduler job that runs `php artisan schedule:run` every minute.
+Missing history can be rebuilt from stock movements (valued at today's cost):
+
+```bash
+php artisan sgms:stock-snapshot --days=90
+```
 
 ## Frontend
 

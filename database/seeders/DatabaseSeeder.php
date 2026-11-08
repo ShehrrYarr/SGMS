@@ -10,16 +10,20 @@ use App\Models\Customer;
 use App\Models\ExpenseCategory;
 use App\Models\PaymentAccount;
 use App\Models\ProductVariant;
+use App\Models\Sale;
 use App\Models\Size;
 use App\Models\SuperAdmin;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Services\ExpenseService;
+use App\Services\InventoryService;
 use App\Services\LedgerService;
 use App\Services\ProductService;
 use App\Services\PurchaseService;
+use App\Services\SaleReturnService;
 use App\Services\SaleService;
+use App\Services\StockSnapshotService;
 use App\Services\StockTransferService;
 use App\Services\TenantProvisioner;
 use Illuminate\Database\Seeder;
@@ -205,6 +209,113 @@ class DatabaseSeeder extends Seeder
             'note' => 'Electricity bill (LESCO)',
         ]);
 
+        $this->seedTradingHistory($main, $mills, $meezan, $hbl, $sana, [$shirt, $denim, $hoodie], $color, $size);
+
+        // Reports: nightly stock snapshots, rebuilt for the demo period.
+        app(StockSnapshotService::class)->backfill(today()->subDays(60), today());
+
         Auth::guard('web')->forgetUser();
+    }
+
+    /**
+     * About seven weeks of back-dated trading so the reports have trends:
+     * an earlier lot, daily sales, monthly rent/salaries, a return and a
+     * stock count correction. Seeded RNG keeps the demo reproducible.
+     */
+    protected function seedTradingHistory(Branch $main, Vendor $mills, PaymentAccount $meezan, PaymentAccount $hbl, Customer $sana, array $products, $color, $size): void
+    {
+        mt_srand(2026);
+        [$shirt, $denim, $hoodie] = $products;
+        $drawer = $main->cashDrawer->id;
+        $inventory = app(InventoryService::class);
+        $sales = app(SaleService::class);
+
+        $row = fn ($product, $colorName, $sizeCode, $qty, $cost, $retail) => [
+            'product_id' => $product->id, 'color_id' => $color[$colorName], 'size_id' => $size[$sizeCode],
+            'quantity' => $qty, 'cost_per_item' => $cost, 'retail_price' => $retail, 'wholesale_price' => round($retail * 0.8),
+        ];
+
+        $items = [];
+        foreach (['S', 'M', 'L', 'XL'] as $s) {
+            $items[] = $row($shirt, 'Black', $s, 15, 520, 1499);
+        }
+        foreach (['M', 'L'] as $s) {
+            $items[] = $row($shirt, 'White', $s, 15, 520, 1499);
+        }
+        foreach (['M', 'L', 'XL'] as $s) {
+            $items[] = $row($denim, 'Navy Blue', $s, 15, 880, 2499);
+        }
+        foreach (['L', 'XL'] as $s) {
+            $items[] = $row($hoodie, 'Black', $s, 10, 980, 2999);
+            $items[] = $row($hoodie, 'Crimson Red', $s, 10, 980, 2999);
+        }
+
+        $purchases = app(PurchaseService::class);
+        $purchases->create([
+            'branch_id' => $main->id,
+            'vendor_id' => $mills->id,
+            'lot_number' => 'LOT-AUT-01',
+            'lot_name' => 'Autumn Restock Lot',
+            'purchase_date' => today()->subDays(50)->toDateString(),
+            'total_lot_cost' => 146600,
+            'items' => $items,
+        ]);
+        $purchases->payVendor($mills, $meezan->id, 146600, today()->subDays(30)->toDateString(), 'MZN-CHQ-40112', 'Autumn lot settlement');
+
+        $variants = ProductVariant::query()->with('product')->get();
+
+        for ($day = 48; $day >= 12; $day--) {
+            for ($n = mt_rand(0, 2); $n > 0; $n--) {
+                $lines = [];
+                foreach ($variants->random(mt_rand(1, 3)) as $v) {
+                    $qty = mt_rand(1, 2);
+                    if ($inventory->available($main->id, $v->id) >= $qty + ($lines[$v->id]['quantity'] ?? 0)) {
+                        $lines[$v->id] = ['variant_id' => $v->id, 'quantity' => $qty, 'unit_price' => (float) $v->retail_price];
+                    }
+                }
+
+                if (! $lines) {
+                    continue;
+                }
+
+                $subtotal = collect($lines)->sum(fn ($l) => $l['quantity'] * $l['unit_price']);
+                $discount = mt_rand(1, 5) === 1 ? 200 : 0;
+                $onCredit = mt_rand(1, 8) === 1;
+                $account = mt_rand(1, 4) === 1 ? $hbl->id : $drawer;
+
+                $sales->create([
+                    'branch_id' => $main->id,
+                    'customer_id' => $onCredit ? $sana->id : null,
+                    'sale_date' => now()->subDays($day)->setTime(mt_rand(11, 20), mt_rand(0, 59)),
+                    'discount' => $discount,
+                    'items' => array_values($lines),
+                    'payments' => $onCredit ? [] : [['payment_account_id' => $account, 'amount' => $subtotal - $discount]],
+                ]);
+            }
+        }
+
+        // Sana settles her account in two instalments.
+        if ((float) $sana->fresh()->current_balance > 0) {
+            $sales->receivePayment($sana->fresh(), $hbl->id, round((float) $sana->fresh()->current_balance / 2), today()->subDays(15)->toDateString(), 'HBL-IBFT-60231');
+        }
+
+        // A size exchange that ended as a cash refund.
+        $oldSale = Sale::query()->whereNull('customer_id')->where('sale_date', '<', now()->subDays(20))->latest('sale_date')->first();
+        if ($oldSale) {
+            app(SaleReturnService::class)->create($oldSale, [$oldSale->items()->value('id') => 1], 'cash', $drawer, 'Wrong size');
+        }
+
+        // Monthly overheads paid from the bank.
+        $expenses = app(ExpenseService::class);
+        $category = fn ($name) => ExpenseCategory::query()->where('name', $name)->value('id');
+        foreach ([today()->subMonthNoOverflow()->startOfMonth(), today()->startOfMonth()] as $month) {
+            $expenses->create(['branch_id' => $main->id, 'expense_category_id' => $category('Rent'), 'payment_account_id' => $meezan->id, 'amount' => 45000, 'expense_date' => $month->toDateString(), 'note' => 'Shop rent '.$month->format('F')]);
+        }
+        $expenses->create(['branch_id' => $main->id, 'expense_category_id' => $category('Salaries'), 'payment_account_id' => $meezan->id, 'amount' => 60000, 'expense_date' => today()->subMonthNoOverflow()->endOfMonth()->toDateString(), 'note' => 'Staff salaries']);
+        $expenses->create(['branch_id' => $main->id, 'expense_category_id' => $category('Marketing'), 'payment_account_id' => $hbl->id, 'amount' => 12000, 'expense_date' => today()->subDays(25)->toDateString(), 'note' => 'Instagram ads']);
+
+        // Stock count found one damaged hoodie.
+        $damaged = $variants->first(fn ($v) => $v->product_id === $hoodie->id);
+        $inventory->adjust($main->id, $damaged->id, -1, 'adjustment', note: 'Damaged in store (stock count)', allowNegative: true, movedAt: now()->subDays(20));
     }
 }

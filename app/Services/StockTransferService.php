@@ -51,8 +51,8 @@ class StockTransferService
                     'quantity' => $item['quantity'],
                 ]);
 
-                $this->inventory->adjust($from->id, $item['variant_id'], -$item['quantity'], 'transfer_out', 'stock_transfer', $transfer->id, note: "{$transfer->transfer_number} to {$to->name}");
-                $this->inventory->adjust($to->id, $item['variant_id'], $item['quantity'], 'transfer_in', 'stock_transfer', $transfer->id, note: "{$transfer->transfer_number} from {$from->name}");
+                $this->inventory->adjust($from->id, $item['variant_id'], -$item['quantity'], 'transfer_out', 'stock_transfer', $transfer->id, note: "{$transfer->transfer_number} to {$to->name}", movedAt: business_time($transfer->transfer_date));
+                $this->inventory->adjust($to->id, $item['variant_id'], $item['quantity'], 'transfer_in', 'stock_transfer', $transfer->id, note: "{$transfer->transfer_number} from {$from->name}", movedAt: business_time($transfer->transfer_date));
             }
 
             return $transfer;

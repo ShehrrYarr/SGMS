@@ -18,6 +18,9 @@ class Customer extends Authenticatable
 {
     use BelongsToTenant, HasFactory, Notifiable, SoftDeletes;
 
+    /** Model-level defaults so new instances match the database defaults. */
+    protected $attributes = ['status' => 'active', 'opening_balance' => 0, 'current_balance' => 0];
+
     protected $fillable = [
         'tenant_id', 'name', 'phone', 'email', 'password', 'address',
         'opening_balance', 'current_balance', 'status', 'last_login_at',

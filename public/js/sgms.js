@@ -75,6 +75,38 @@
       });
     },
 
+    /**
+     * ApexCharts with app defaults. Extra options:
+     *   money: true          -> currency axis + tooltip
+     *   colors: ['primary']  -> theme colour names are resolved from CSS variables
+     */
+    chart(el, options = {}) {
+      if (!window.ApexCharts || !el) return null;
+      const { money, ...rest } = options;
+      const short = (v) => SGMS.money(v).replace(/\.00$/, '');
+      const resolve = (c) => (typeof c === 'string' && !c.startsWith('#') && !c.startsWith('rgb') ? SGMS.color(c) : c);
+
+      const config = {
+        dataLabels: { enabled: false },
+        grid: { borderColor: 'rgba(148,163,184,.2)' },
+        legend: { position: 'top', horizontalAlign: 'left' },
+        theme: { mode: root.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light' },
+        ...rest,
+        chart: { height: 320, toolbar: { show: false }, fontFamily: 'inherit', background: 'transparent', ...(rest.chart || {}) },
+      };
+
+      if (rest.colors) config.colors = rest.colors.map(resolve);
+      if (money) {
+        config.yaxis = { labels: { formatter: short }, ...(rest.yaxis || {}) };
+        config.tooltip = { y: { formatter: (v) => SGMS.money(v) }, ...(rest.tooltip || {}) };
+      }
+
+      el._chart?.destroy();
+      el._chart = new ApexCharts(el, config);
+      el._chart.render();
+      return el._chart;
+    },
+
     /** Resolve a Bootstrap theme colour (CSS variable) for charts. */
     color(name, fallback = '#0d6efd') {
       return getComputedStyle(root).getPropertyValue('--bs-' + name).trim() || fallback;

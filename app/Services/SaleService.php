@@ -103,7 +103,7 @@ class SaleService
 
             foreach ($totals['lines'] as $line) {
                 $sale->items()->create([...$line, 'tenant_id' => $sale->tenant_id]);
-                $this->inventory->adjust($branchId, $line['product_variant_id'], -$line['quantity'], 'sale', 'sale', $sale->id, (float) $line['cost_price'], 'Sale '.$sale->invoice_number);
+                $this->inventory->adjust($branchId, $line['product_variant_id'], -$line['quantity'], 'sale', 'sale', $sale->id, (float) $line['cost_price'], 'Sale '.$sale->invoice_number, movedAt: $sale->sale_date);
             }
 
             // Customer ledger: full invoice first, then each settlement.

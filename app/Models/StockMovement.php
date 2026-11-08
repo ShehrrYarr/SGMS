@@ -22,12 +22,12 @@ class StockMovement extends Model
 
     protected $fillable = [
         'tenant_id', 'branch_id', 'product_variant_id', 'type', 'quantity', 'balance_after',
-        'reference_type', 'reference_id', 'unit_cost', 'note', 'created_by',
+        'reference_type', 'reference_id', 'unit_cost', 'note', 'moved_at', 'created_by',
     ];
 
     protected function casts(): array
     {
-        return ['unit_cost' => 'decimal:2'];
+        return ['unit_cost' => 'decimal:2', 'moved_at' => 'datetime'];
     }
 
     public function variant(): BelongsTo
